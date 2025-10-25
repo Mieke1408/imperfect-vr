@@ -8,14 +8,28 @@
   <body>
   <!-- add VR here -->
     <a-scene>
-      <a-sphere position="0 1.25 -1" radius="1.25" color="#EF2D5E"></a-sphere>
+      <!-- assets: Video vorbereiten -->
+      <a-assets>
+        <video id="mushroom" src="mushroom.mp4" autoplay loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
+      </a-assets>
+
       <a-box position="-1 0.5 1" rotation="0 45 0" width="1" height="1" depth="1" color="#4CC3D9"></a-box>
-      <a-cylinder position="1  0.75 1" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
-      <a-plane rotation="-90 0 0" width="4" height="4" src="vr.jpg"></a-plane>
+      <!-- Plane zeigt das Video -->
+      <a-plane rotation="-90 0 0" width="4" height="4" src="#mushroom.mp4" material="shader: flat;"></a-plane>
       <a-sky color="#030303"></a-sky>
       <a-entity position="0 0 3.8">
         <a-camera></a-camera>
       </a-entity>
     </a-scene>
+
+    <script>
+      // Fallback: versuche Playback zu starten (manche Browser erfordern ein explizites play())
+      const v = document.getElementById('mus');
+      if (v) {
+        v.play().catch(() => {
+          // Falls der Browser Autoplay trotz muted blockiert, kann hier ein Hinweis oder ein Play-Button angezeigt werden.
+        });
+      }
+    </script>
   </body>
 </html>
