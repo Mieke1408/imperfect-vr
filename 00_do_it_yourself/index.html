@@ -42,8 +42,8 @@
         <video id="trance" src="trance.mp4" autoplay loop playsinline webkit-playsinline crossorigin="anonymous"></video>
         <video id="mushrooms" src="mushrooms.mp4" autoplay loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
         <img id="wittgenstein" src="wittgenstein.jpg" crossorigin="anonymous">
-        <!-- Afd_wtf-Video als Asset (stumm, autoplay, loop, playsinline) -->
-        <video id="Afd_wtf" src="Afd_wtf.mp4" autoplay loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
+        <!-- Afd_wtf-Video: kein "muted" hier, damit Ton verfügbar ist -->
+        <video id="Afd_wtf" src="Afd_wtf.mp4" autoplay loop playsinline webkit-playsinline crossorigin="anonymous"></video>
         <!-- ...existing code... -->
       </a-assets>
 
@@ -184,12 +184,17 @@
       (function ensureAfdWtfLoop(){
         const r = document.getElementById('Afd_wtf');
         if (!r) return;
-        r.play().catch(()=>{});
+        // Kein erzwungenes Autoplay mit Ton — Start erfolgt durch Nutzerinteraktion (click/keydown)
+        // Dennoch: bei 'ended' neu starten
         r.addEventListener('ended', () => {
           try { r.currentTime = 0; r.play().catch(()=>{}); } catch (e) {}
         });
+        // Falls es unbeabsichtigt pausiert, versuchen neu zu starten (ohne Autoplay erzwingen)
         r.addEventListener('pause', () => {
-          if (!r.ended) r.play().catch(()=>{});
+          if (!r.ended) {
+            // versuchen, weiterzuspielen; wird ggf. blockiert bis Nutzer interagiert
+            r.play().catch(()=>{});
+          }
         });
       })();
 
