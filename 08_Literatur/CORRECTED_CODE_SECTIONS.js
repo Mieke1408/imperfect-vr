@@ -107,7 +107,9 @@ let pathChosen = false;
 let aiUsed = false;
 let voiceInterval = null;
 let portal3Active = false;  // FIXED: Moved from after </html> tag to proper location
-let portal4Active = false;  // Add this if not already present
+
+// Note: If your code also uses portal4Active, declare it here as well:
+// let portal4Active = false;
 
 // Techno audio object
 const techno = {

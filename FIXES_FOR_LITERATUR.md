@@ -63,9 +63,8 @@ setTimeout(() => {
 ```javascript
 </body>
 </html>
-<file-end>08_Literatur\index copy.html</file-end>
 
-  let portal3Active = false;
+let portal3Active = false;
 ```
 
 **Fix**: Move this variable declaration to the top of the script section with other variable declarations (like `portal1Active`, `pathChosen`, etc.). The variable should not be declared outside the HTML structure.
