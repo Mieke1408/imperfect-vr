@@ -34,6 +34,14 @@
       color: white; font-size: 16px; z-index: 100; display: none;
       background: rgba(0,0,0,0.7); padding: 15px 30px; border-radius: 8px;
       text-align: center; max-width: 80%;
+      transition: opacity 0.3s;
+    }
+    
+    #hover-hint {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      color: #2ecc71; font-size: 14px; z-index: 100; display: none;
+      background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 8px;
+      text-align: center; border: 2px solid #2ecc71;
     }
     
     #chapter-title, #subtitle {
@@ -88,6 +96,7 @@
   
   <div id="progress"></div>
   <div id="hint"></div>
+  <div id="hover-hint">Halte deinen Blick 2 Sekunden auf einer Wahl...</div>
   <div id="chapter-title"></div>
   <div id="subtitle"></div>
   <div id="voices"></div>
@@ -356,6 +365,14 @@
         document.getElementById('subtitle').classList.remove('visible');
       }, 3000);
       
+      // Show/hide hover hint for Chapter 3
+      const hoverHint = document.getElementById('hover-hint');
+      if (n === 3) {
+        hoverHint.style.display = 'block';
+      } else {
+        hoverHint.style.display = 'none';
+      }
+      
       playChapterMusic(n);
       updatePortalHint();
     }
@@ -416,6 +433,22 @@
       let hoverProgress = 0;
       const HOVER_DURATION = 2000; // 2 seconds to trigger selection
       
+      // Create hover progress indicator (reusable)
+      let progressRing = null;
+      function createProgressRing() {
+        if (!progressRing) {
+          progressRing = document.createElement('a-ring');
+          progressRing.setAttribute('radius-inner', '1.1');
+          progressRing.setAttribute('radius-outer', '1.3');
+          progressRing.setAttribute('color', '#2ecc71');
+          progressRing.setAttribute('rotation', '0 0 0');
+          progressRing.setAttribute('theta-length', '0');
+          progressRing.setAttribute('visible', 'false');
+          document.getElementById('chapter3').appendChild(progressRing);
+        }
+        return progressRing;
+      }
+      
       document.querySelectorAll('.lab-choice').forEach(box => {
         
         // On hover start (raycaster-intersected event for VR compatibility)
@@ -435,6 +468,13 @@
           
           console.log('Hover started on', hoveredBox.getAttribute('data-next'));
           
+          // Show progress ring at box position
+          const ring = createProgressRing();
+          const pos = hoveredBox.getAttribute('position');
+          ring.setAttribute('position', pos);
+          ring.setAttribute('visible', 'true');
+          ring.setAttribute('theta-length', '0');
+          
           // Start hover timer with progress update
           const startTime = Date.now();
           hoverTimer = setInterval(() => {
@@ -447,10 +487,14 @@
             const b = Math.floor(136 + (113 - 136) * hoverProgress);
             hoveredBox.setAttribute('color', `rgb(${r}, ${g}, ${b})`);
             
+            // Update progress ring
+            ring.setAttribute('theta-length', (360 * hoverProgress).toString());
+            
             if (hoverProgress >= 1) {
               // Trigger selection after hover duration
               clearInterval(hoverTimer);
               hoverTimer = null;
+              ring.setAttribute('visible', 'false');
               handleLabChoice(hoveredBox);
               currentHoveredBox = null;
             }
@@ -468,6 +512,11 @@
           if (hoverTimer) {
             clearInterval(hoverTimer);
             hoverTimer = null;
+          }
+          
+          // Hide progress ring
+          if (progressRing) {
+            progressRing.setAttribute('visible', 'false');
           }
           
           // Restore original color if hover wasn't completed
