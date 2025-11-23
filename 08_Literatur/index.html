@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Literatur - Imperfect VR</title>
+  <meta name="description" content="Interactive Literature VR Experience" />
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: sans-serif; }
+    
+    #start-screen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 1000; color: white; text-align: center;
+    }
+    #start-screen h1 { font-size: 3em; margin-bottom: 20px; }
+    #start-screen button {
+      font-size: 1.5em; padding: 15px 40px; cursor: pointer;
+      background: #2ecc71; border: none; color: white;
+      border-radius: 5px; transition: all 0.3s;
+    }
+    #start-screen button:hover { background: #27ae60; transform: scale(1.05); }
+    
+    #progress {
+      position: fixed; top: 20px; left: 20px; color: white;
+      font-size: 18px; z-index: 100; display: none;
+      background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 5px;
+    }
+    
+    #hint {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      color: white; font-size: 16px; z-index: 100; display: none;
+      background: rgba(0,0,0,0.7); padding: 15px 30px; border-radius: 8px;
+      text-align: center; max-width: 80%;
+    }
+    
+    #chapter-title, #subtitle {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 3em; color: white; z-index: 99;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+      opacity: 0; transition: opacity 1s;
+      text-align: center;
+    }
+    #subtitle { font-size: 1.5em; top: 60%; }
+    .visible { opacity: 1 !important; }
+    
+    #ai-panel, #final-panel {
+      display: none; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); background: rgba(0,0,0,0.9);
+      color: white; padding: 30px; border-radius: 10px;
+      max-width: 600px; z-index: 1000;
+    }
+    #ai-panel input, #final-panel textarea {
+      width: 100%; padding: 10px; margin: 10px 0;
+      font-size: 16px; border-radius: 5px; border: 1px solid #555;
+      background: #222; color: white;
+    }
+    #ai-panel button, #final-panel button {
+      padding: 10px 20px; margin: 5px; font-size: 16px;
+      cursor: pointer; border-radius: 5px; border: none;
+      background: #2ecc71; color: white;
+    }
+    #ai-output { margin-top: 15px; padding: 15px; background: #333;
+      border-radius: 5px; display: none; }
+    
+    #voices { display: none; position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+    .voice {
+      position: absolute; font-size: 24px; font-weight: bold;
+      animation: fadeVoice 4s forwards;
+    }
+    @keyframes fadeVoice {
+      0% { opacity: 0; transform: scale(0.5); }
+      20% { opacity: 1; transform: scale(1); }
+      80% { opacity: 1; }
+      100% { opacity: 0; transform: scale(1.2); }
+    }
+  </style>
+</head>
+<body>
+  <div id="start-screen">
+    <h1>Literarische Reise</h1>
+    <p>Eine interaktive VR-Erfahrung über Geschichten und Kreativität</p>
+    <button onclick="startExperience()">Start Experience</button>
+  </div>
+  
+  <div id="progress"></div>
+  <div id="hint"></div>
+  <div id="chapter-title"></div>
+  <div id="subtitle"></div>
+  <div id="voices"></div>
+  
+  <div id="ai-panel">
+    <h2>KI-Terminal</h2>
+    <p>Frage die KI nach Inspiration...</p>
+    <input type="text" id="ai-input" placeholder="z.B.: Geschichte, Anfang, Ende" />
+    <button onclick="generateAI()">Generieren</button>
+    <button onclick="closeAI()">Schließen</button>
+    <div id="ai-output">
+      <p id="ai-text"></p>
+    </div>
+  </div>
+  
+  <div id="final-panel">
+    <h2>Dein Abschluss</h2>
+    <p>Schreibe deine eigene Geschichte...</p>
+    <textarea id="final-input" rows="6" placeholder="Deine Geschichte..."></textarea>
+    <button onclick="submitFinal()">Absenden</button>
+  </div>
+  
+  <a-scene>
+    <a-assets>
+      <!-- Add assets here if needed -->
+    </a-assets>
+    
+    <!-- Camera Rig with WASD controls -->
+    <a-entity id="rig" position="0 0 4">
+      <a-camera id="camera" look-controls wasd-controls="acceleration: 50">
+        <a-cursor></a-cursor>
+      </a-camera>
+    </a-entity>
+    
+    <!-- Chapter 1: Introduction -->
+    <a-entity id="chapter1" visible="true">
+      <a-sky color="#1a1a2e"></a-sky>
+      <a-plane position="0 0 -4" rotation="-90 0 0" width="20" height="20" color="#16213e"></a-plane>
+      
+      <a-box id="portal1" position="0 1.5 -15" width="2" height="3" depth="0.3"
+             color="#555" material="emissive: #555; emissiveIntensity: 0.3"></a-box>
+      <a-text id="portal1-text" value="Portal 1" position="0 1.5 -14.8"
+              align="center" color="#999"></a-text>
+    </a-entity>
+    
+    <!-- Chapter 2: Path -->
+    <a-entity id="chapter2" visible="false">
+      <a-sky color="#2a2a3e"></a-sky>
+      <a-plane position="0 0 -25" rotation="-90 0 0" width="20" height="30" color="#1a1a2e"></a-plane>
+      
+      <a-box id="portal2" position="0 1.5 -50" width="2" height="3" depth="0.3"
+             color="#2ecc71" material="emissive: #2ecc71; emissiveIntensity: 0.6"></a-box>
+      <a-text id="portal2-text" value="→ Weiter" position="0 1.5 -49.8"
+              align="center" color="#ffffff"></a-text>
+    </a-entity>
+    
+    <!-- Chapter 3: Labyrinth Choices (HOVER INTERACTION) -->
+    <a-entity id="chapter3" visible="false">
+      <a-sky color="#0f0f1e"></a-sky>
+      <a-plane position="0 0 -15" rotation="-90 0 0" width="30" height="50" color="#0a0a15"></a-plane>
+      
+      <!-- First level choices -->
+      <a-entity id="lab-1-left" visible="true">
+        <a-box class="lab-choice" position="-3 1.5 -20" width="2" height="1.5" depth="0.3"
+               color="#555" data-next="2A"></a-box>
+        <a-text value="Märchen" position="-3 1.5 -19.8" align="center" color="#fff"></a-text>
+      </a-entity>
+      
+      <a-entity id="lab-1-right" visible="true">
+        <a-box class="lab-choice" position="3 1.5 -20" width="2" height="1.5" depth="0.3"
+               color="#555" data-next="2B"></a-box>
+        <a-text value="Realität" position="3 1.5 -19.8" align="center" color="#fff"></a-text>
+      </a-entity>
+      
+      <!-- Second level choices -->
+      <a-entity id="lab-2A" visible="false">
+        <a-box class="lab-choice" position="-3 1.5 -30" width="2" height="1.5" depth="0.3"
+               color="#555" data-next="3A"></a-box>
+        <a-text value="Hoffnung" position="-3 1.5 -29.8" align="center" color="#fff"></a-text>
+      </a-entity>
+      
+      <a-entity id="lab-2B" visible="false">
+        <a-box class="lab-choice" position="3 1.5 -30" width="2" height="1.5" depth="0.3"
+               color="#555" data-next="3B"></a-box>
+        <a-text value="Zweifel" position="3 1.5 -29.8" align="center" color="#fff"></a-text>
+      </a-entity>
+      
+      <!-- Third level choices -->
+      <a-entity id="lab-3A" visible="false">
+        <a-box class="lab-choice" position="-3 1.5 -40" width="2" height="1.5" depth="0.3"
+               color="#555" data-next="END-HOPE"></a-box>
+        <a-text value="Licht" position="-3 1.5 -39.8" align="center" color="#fff"></a-text>
+      </a-entity>
+      
+      <a-entity id="lab-3B" visible="false">
+        <a-box class="lab-choice" position="0 1.5 -40" width="2" height="1.5" depth="0.3"
+               color="#555" data-next="END-NEUTRAL"></a-box>
+        <a-text value="Balance" position="0 1.5 -39.8" align="center" color="#fff"></a-text>
+      </a-entity>
+      
+      <a-entity id="lab-3C" visible="false">
+        <a-box class="lab-choice" position="3 1.5 -40" width="2" height="1.5" depth="0.3"
+               color="#555" data-next="END-DYSTOPIA"></a-box>
+        <a-text value="Dunkelheit" position="3 1.5 -39.8" align="center" color="#fff"></a-text>
+      </a-entity>
+      
+      <!-- Feedback texts -->
+      <a-text id="lab-feedback-1" position="0 2.5 -25" align="center" color="#aaa" visible="false"></a-text>
+      <a-text id="lab-feedback-2" position="0 2.5 -35" align="center" color="#aaa" visible="false"></a-text>
+      <a-text id="lab-ending" position="0 2 -45" align="center" color="#fff" width="6"></a-text>
+      
+      <!-- Paths -->
+      <a-plane id="lab-path-1" position="0 0 -25" width="0.5" height="5" color="#444" visible="false"></a-plane>
+      <a-plane id="lab-path-2" position="0 0 -35" width="0.5" height="5" color="#444" visible="false"></a-plane>
+      <a-plane id="lab-path-3" position="0 0 -45" width="0.5" height="5" color="#444" visible="false"></a-plane>
+      
+      <a-box id="portal3" position="0 1.5 -60" width="2" height="3" depth="0.3"
+             color="#555" material="emissive: #555; emissiveIntensity: 0.3"></a-box>
+      <a-text id="portal3-text" value="Portal 3" position="0 1.5 -59.8"
+              align="center" color="#999"></a-text>
+    </a-entity>
+    
+    <!-- Chapter 4: AI Room -->
+    <a-entity id="chapter4" visible="false">
+      <a-sky color="#1a0a0a"></a-sky>
+      <a-plane position="0 0 -10" rotation="-90 0 0" width="20" height="20" color="#0f0505"></a-plane>
+      
+      <a-box class="interact-ai" position="0 1.5 -12" width="2" height="1.5" depth="0.5"
+             color="#c0392b" material="emissive: #c0392b; emissiveIntensity: 0.5"></a-box>
+      <a-text value="KI-Terminal" position="0 1.5 -11.8" align="center" color="#fff"></a-text>
+      
+      <a-box id="portal4" position="0 1.5 -20" width="2" height="3" depth="0.3"
+             color="#555" material="emissive: #555; emissiveIntensity: 0.3"></a-box>
+      <a-text id="portal4-text" value="Portal 4" position="0 1.5 -19.8"
+              align="center" color="#999"></a-text>
+    </a-entity>
+    
+    <!-- Chapter 5: Final Desk -->
+    <a-entity id="chapter5" visible="false">
+      <a-sky color="#2a1a1a"></a-sky>
+      <a-plane position="0 0 -5" rotation="-90 0 0" width="15" height="15" color="#1a0a0a"></a-plane>
+      
+      <a-box class="interact-final" position="0 1 -8" width="3" height="1" depth="2"
+             color="#8b4513"></a-box>
+      <a-text value="Schreibtisch" position="0 1.5 -7.8" align="center" color="#fff"></a-text>
+      
+      <a-box id="exit-door" position="0 2 -12" width="2" height="3" depth="0.3"
+             color="#2ecc71" material="emissive: #2ecc71; emissiveIntensity: 0.6"></a-box>
+      <a-text value="Ausgang" position="0 2 -11.8" align="center" color="#fff"></a-text>
+    </a-entity>
+    
+    <!-- Chapter 6: Finale -->
+    <a-entity id="chapter6" visible="false">
+      <a-sky color="#87ceeb"></a-sky>
+      <a-plane position="0 0 0" rotation="-90 0 0" width="30" height="30" color="#90ee90"></a-plane>
+      <a-text value="Ende - Danke fürs Spielen!" position="0 2 -5"
+              align="center" color="#000" width="8"></a-text>
+    </a-entity>
+  </a-scene>
+  
+  <script>
+    // === GAME STATE ===
+    let gameStarted = false;
+    let currentChapter = 1;
+    let portal1Active = false;
+    let portal3Active = false;
+    let portal4Active = false;
+    let pathChosen = false;
+    let aiUsed = false;
+    let voiceInterval = null;
+    
+    const titles = [
+      ['Kapitel 1', 'Die Worte'],
+      ['Kapitel 2', 'Der Pfad'],
+      ['Kapitel 3', 'Das Labyrinth'],
+      ['Kapitel 4', 'Die Maschine'],
+      ['Kapitel 5', 'Der Schreibtisch'],
+      ['Kapitel 6', 'Das Ende']
+    ];
+    
+    const aiTexts = {
+      'geschichte': 'Eine Geschichte beginnt mit einem Konflikt...',
+      'anfang': 'Der Anfang ist der Moment, in dem alles möglich ist.',
+      'ende': 'Das Ende ist nie wirklich das Ende.',
+      'default': 'Die KI denkt nach... Versuche: geschichte, anfang, ende'
+    };
+    
+    // === AUDIO ===
+    let clockTickAudio = null;
+    let droneAudio = null;
+    let redSexAudio = null;
+    let blackNoiseAudio = null;
+    let libraryAudio = null;
+    
+    function initAudio() {
+      console.log('Audio initialized');
+    }
+    
+    function stopAllAudio() {
+      if (clockTickAudio) clockTickAudio.pause();
+      if (droneAudio) droneAudio.pause();
+      if (redSexAudio) redSexAudio.pause();
+      if (blackNoiseAudio) blackNoiseAudio.pause();
+      if (libraryAudio) libraryAudio.pause();
+      stopVoices();
+    }
+    
+    function playChapterMusic(n) {
+      stopAllAudio();
+      console.log('Playing music for chapter', n);
+    }
+    
+    function activatePortal(n) {
+      try {
+        const p = document.getElementById('portal' + n);
+        const pt = document.getElementById('portal' + n + '-text');
+        if (!p) return;
+        p.setAttribute('color', '#2ecc71');
+        p.setAttribute('material', 'color: #2ecc71; emissive: #2ecc71; emissiveIntensity: 0.6');
+        if (pt) {
+          pt.setAttribute('value', '→ Weiter');
+          pt.setAttribute('color', '#ffffff');
+        }
+        console.log('Portal ' + n + ' activated');
+      } catch (e) {
+        console.warn('activatePortal error', e);
+      }
+    }
+    
+    function updatePortalHint() {
+      const hints = [
+        'Bewege dich vorwärts zum Portal',
+        'Gehe weiter zum nächsten Raum',
+        'Wähle einen Pfad durch Darübergehen (Hover)',
+        'Interagiere mit dem KI-Terminal',
+        'Schreibe deine Geschichte',
+        'Die Reise endet'
+      ];
+      document.getElementById('hint').textContent = hints[currentChapter - 1] || '';
+    }
+    
+    // === CHAPTER NAVIGATION ===
+    function goToChapter(n) {
+      document.getElementById('chapter' + currentChapter).setAttribute('visible', 'false');
+      currentChapter = n;
+      document.getElementById('chapter' + n).setAttribute('visible', 'true');
+      
+      const rig = document.getElementById('rig');
+      const positions = {
+        1: '0 0 4',
+        2: '0 0 -20',
+        3: '0 0 -10',
+        4: '0 0 -5',
+        5: '0 0 -2',
+        6: '0 0 8'
+      };
+      rig.setAttribute('position', positions[n] || '0 0 4');
+      rig.setAttribute('rotation', '0 0 0');
+      
+      document.getElementById('chapter-title').textContent = titles[n-1][0];
+      document.getElementById('subtitle').textContent = titles[n-1][1];
+      document.getElementById('chapter-title').classList.add('visible');
+      document.getElementById('subtitle').classList.add('visible');
+      setTimeout(() => {
+        document.getElementById('chapter-title').classList.remove('visible');
+        document.getElementById('subtitle').classList.remove('visible');
+      }, 3000);
+      
+      playChapterMusic(n);
+      updatePortalHint();
+    }
+    
+    // === START ===
+    function startExperience() {
+      document.getElementById('start-screen').style.display = 'none';
+      document.getElementById('progress').style.display = 'flex';
+      document.getElementById('hint').style.display = 'block';
+      
+      gameStarted = true;
+      document.getElementById('chapter-title').textContent = titles[0][0];
+      document.getElementById('subtitle').textContent = titles[0][1];
+      document.getElementById('chapter-title').classList.add('visible');
+      document.getElementById('subtitle').classList.add('visible');
+      setTimeout(() => {
+        document.getElementById('chapter-title').classList.remove('visible');
+        document.getElementById('subtitle').classList.remove('visible');
+      }, 4000);
+      
+      playChapterMusic(1);
+      updatePortalHint();
+      
+      setTimeout(() => {
+        portal1Active = true;
+        activatePortal(1);
+      }, 15000);
+    }
+    
+    // === MAIN LOOP ===
+    document.querySelector('a-scene').addEventListener('loaded', () => {
+      const rig = document.getElementById('rig');
+      const camera = document.getElementById('camera');
+      
+      // Position check for portals
+      setInterval(() => {
+        if (!gameStarted) return;
+        const camWorldPos = camera.object3D.getWorldPosition(new THREE.Vector3());
+        
+        if (currentChapter === 1 && portal1Active && camWorldPos.z < -10) {
+          goToChapter(2);
+        }
+        if (currentChapter === 2 && camWorldPos.z < -43) {
+          goToChapter(3);
+        }
+        if (currentChapter === 3 && pathChosen && portal3Active && camWorldPos.z < -56) {
+          goToChapter(4);
+        }
+        if (currentChapter === 4 && aiUsed && camWorldPos.z < -16) {
+          goToChapter(5);
+        }
+      }, 100);
+      
+      // === HOVER-BASED LABYRINTH CHOICE INTERACTION (CHAPTER 3) ===
+      let labStory = [];
+      let hoverTimer = null;
+      let currentHoveredBox = null;
+      let hoverProgress = 0;
+      const HOVER_DURATION = 2000; // 2 seconds to trigger selection
+      
+      document.querySelectorAll('.lab-choice').forEach(box => {
+        
+        // On hover start (raycaster-intersected event for VR compatibility)
+        box.addEventListener('mouseenter', (e) => {
+          if (currentChapter !== 3) return;
+          if (currentHoveredBox) return; // Prevent multiple hovers
+          if (pathChosen) return; // Already chose a path
+          
+          const hoveredBox = e.target;
+          currentHoveredBox = hoveredBox;
+          hoverProgress = 0;
+          
+          // Visual feedback: brighten the box and show progress
+          const originalColor = hoveredBox.getAttribute('color') || '#555';
+          hoveredBox.setAttribute('data-original-color', originalColor);
+          hoveredBox.setAttribute('color', '#888');
+          
+          console.log('Hover started on', hoveredBox.getAttribute('data-next'));
+          
+          // Start hover timer with progress update
+          const startTime = Date.now();
+          hoverTimer = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            hoverProgress = Math.min(elapsed / HOVER_DURATION, 1);
+            
+            // Update color to show progress (from #888 to #2ecc71)
+            const r = Math.floor(136 + (46 - 136) * hoverProgress);
+            const g = Math.floor(136 + (204 - 136) * hoverProgress);
+            const b = Math.floor(136 + (113 - 136) * hoverProgress);
+            hoveredBox.setAttribute('color', `rgb(${r}, ${g}, ${b})`);
+            
+            if (hoverProgress >= 1) {
+              // Trigger selection after hover duration
+              clearInterval(hoverTimer);
+              hoverTimer = null;
+              handleLabChoice(hoveredBox);
+              currentHoveredBox = null;
+            }
+          }, 50);
+        });
+        
+        // On hover end
+        box.addEventListener('mouseleave', (e) => {
+          if (currentChapter !== 3) return;
+          if (pathChosen) return;
+          
+          const hoveredBox = e.target;
+          
+          // Clear timer if user stops hovering before completion
+          if (hoverTimer) {
+            clearInterval(hoverTimer);
+            hoverTimer = null;
+          }
+          
+          // Restore original color if hover wasn't completed
+          const originalColor = hoveredBox.getAttribute('data-original-color') || '#555';
+          if (hoverProgress < 1) {
+            hoveredBox.setAttribute('color', originalColor);
+          }
+          
+          if (currentHoveredBox === hoveredBox) {
+            currentHoveredBox = null;
+          }
+          
+          hoverProgress = 0;
+          console.log('Hover ended');
+        });
+      });
+      
+      // Extracted handler function for lab choice selection
+      function handleLabChoice(clickedBox) {
+        pathChosen = true; // Prevent further selections
+        
+        const nextState = clickedBox.getAttribute('data-next');
+        const choiceText = clickedBox.nextElementSibling?.getAttribute('value') || '';
+        
+        labStory.push(choiceText);
+        console.log('Wahl getroffen:', nextState, choiceText);
+        
+        // Mark chosen box as selected (green)
+        clickedBox.setAttribute('color', '#2ecc71');
+        clickedBox.setAttribute('material', 'color: #2ecc71; emissive: #2ecc71; emissiveIntensity: 0.5');
+        
+        // Hide current level after short delay
+        setTimeout(() => {
+          document.querySelectorAll('#lab-1-left, #lab-1-right, #lab-2A, #lab-2B, #lab-3A, #lab-3B, #lab-3C').forEach(el => {
+            el.setAttribute('visible', 'false');
+          });
+          
+          // Show next level
+          if (nextState === '2A' || nextState === '2B') {
+            document.getElementById('lab-feedback-1').setAttribute('value', choiceText);
+            document.getElementById('lab-feedback-1').setAttribute('visible', 'true');
+            setTimeout(() => {
+              document.getElementById('lab-' + nextState).setAttribute('visible', 'true');
+              pathChosen = false; // Allow next choice
+            }, 800);
+          } else if (nextState === '3A' || nextState === '3B' || nextState === '3C') {
+            document.getElementById('lab-feedback-2').setAttribute('value', choiceText);
+            document.getElementById('lab-feedback-2').setAttribute('visible', 'true');
+            setTimeout(() => {
+              document.getElementById('lab-' + nextState).setAttribute('visible', 'true');
+              pathChosen = false; // Allow next choice
+            }, 800);
+          } else if (nextState && nextState.startsWith('END-')) {
+            // Finale
+            const endings = {
+              'END-HOPE': 'Die Geschichte endet mit einem Licht am Horizont.\\n\\nDeine Reise:\\n' + labStory.join('\\n→ '),
+              'END-NEUTRAL': 'Die Geschichte endet, wie sie begann.\\n\\nDeine Reise:\\n' + labStory.join('\\n→ '),
+              'END-DYSTOPIA': 'Die Geschichte endet in Dunkelheit.\\n\\nDeine Reise:\\n' + labStory.join('\\n→ ')
+            };
+            
+            document.getElementById('lab-ending').setAttribute('value', endings[nextState] || 'Ende.');
+            document.getElementById('lab-ending').setAttribute('visible', 'true');
+            
+            portal3Active = true;
+            activatePortal(3);
+            updatePortalHint();
+            pathChosen = true; // Final choice made
+          }
+        }, 400);
+      }
+      
+      // KI-Terminal interaction
+      document.querySelector('.interact-ai').addEventListener('click', () => {
+        if(currentChapter === 4) {
+          document.getElementById('ai-panel').style.display = 'block';
+          document.exitPointerLock();
+        }
+      });
+      
+      // Final desk interaction
+      document.querySelector('.interact-final').addEventListener('click', () => {
+        if(currentChapter === 5) {
+          document.getElementById('final-panel').style.display = 'block';
+          document.exitPointerLock();
+        }
+      });
+      
+      // Portal click handlers
+      document.getElementById('portal1').addEventListener('click', () => {
+        if (portal1Active && currentChapter === 1) {
+          goToChapter(2);
+        }
+      });
+      
+      document.getElementById('portal2').addEventListener('click', () => {
+        if (currentChapter === 2) {
+          goToChapter(3);
+        }
+      });
+      
+      document.getElementById('portal3').addEventListener('click', () => {
+        if (portal3Active && currentChapter === 3) {
+          goToChapter(4);
+        }
+      });
+      
+      document.getElementById('portal4').addEventListener('click', () => {
+        if (portal4Active && currentChapter === 4) {
+          goToChapter(5);
+        }
+      });
+      
+      document.getElementById('exit-door').addEventListener('click', () => {
+        if (currentChapter === 5) {
+          document.getElementById('final-panel').style.display = 'block';
+          document.exitPointerLock();
+        }
+      });
+    });
+    
+    function generateAI() {
+      const input = document.getElementById('ai-input').value.trim().toLowerCase();
+      const text = aiTexts[input] || aiTexts['default'];
+      document.getElementById('ai-text').textContent = text;
+      document.getElementById('ai-output').style.display = 'block';
+      aiUsed = true;
+      portal4Active = true;
+      activatePortal(4);
+      updatePortalHint();
+    }
+    
+    function closeAI() {
+      document.getElementById('ai-panel').style.display = 'none';
+    }
+    
+    function submitFinal() {
+      const input = document.getElementById('final-input').value.trim();
+      if(!input) {
+        alert('Bitte schreibe mindestens einen Satz.');
+        return;
+      }
+      document.getElementById('final-panel').style.display = 'none';
+      stopAllAudio();
+      setTimeout(() => {
+        goToChapter(6);
+      }, 2000);
+    }
+    
+    function stopVoices() {
+      if(voiceInterval) clearInterval(voiceInterval);
+      document.getElementById('voices').style.display = 'none';
+      document.getElementById('voices').innerHTML = '';
+    }
+  </script>
+</body>
+</html>
