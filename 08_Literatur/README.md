@@ -14,7 +14,7 @@ A multi-chapter VR storytelling experience exploring themes of creativity, choic
 
 ### Hover-Based Interaction (Chapter 3)
 
-In Chapter 3, the traditional click-based interaction has been replaced with a **hover-based selection system**:
+In Chapter 3, the traditional click-based interaction has been replaced with a **hover-based selection system** as the primary interaction method, with **click as an accessible fallback**.
 
 #### How It Works
 - **Hover to Select**: Move your gaze (or mouse cursor) over any choice box
@@ -22,15 +22,20 @@ In Chapter 3, the traditional click-based interaction has been replaced with a *
 - **Visual Feedback**: 
   - Box brightens from gray (#888) to green (#2ecc71) as you hover
   - Color transitions smoothly to show progress
+  - Circular progress ring fills from 0° to 360° around the box
   - Final selection is marked with bright green
 - **Cancellable**: Move away before the 2 seconds to cancel selection
 - **Single Selection**: Only one box can be hovered at a time
+- **Accessibility**: Click still works as a fallback for users who cannot use hover (assistive technologies, motor disabilities)
 
 #### Implementation Details
 - Uses `mouseenter` and `mouseleave` events for desktop compatibility
+- **Accessibility**: `click` event maintained as fallback for assistive technologies
 - Compatible with VR raycaster interactions
 - Progress updates every 50ms for smooth visual feedback
 - Prevents multiple simultaneous selections with `pathChosen` flag
+- RGB color constants for maintainable code
+- Proper newline handling in ending text display
 
 ### Technical Details
 

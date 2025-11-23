@@ -433,6 +433,10 @@
       let hoverProgress = 0;
       const HOVER_DURATION = 2000; // 2 seconds to trigger selection
       
+      // RGB color constants for smooth transition
+      const HOVER_START_RGB = { r: 136, g: 136, b: 136 }; // #888
+      const HOVER_END_RGB = { r: 46, g: 204, b: 113 };    // #2ecc71
+      
       // Create hover progress indicator (reusable)
       let progressRing = null;
       function createProgressRing() {
@@ -481,10 +485,10 @@
             const elapsed = Date.now() - startTime;
             hoverProgress = Math.min(elapsed / HOVER_DURATION, 1);
             
-            // Update color to show progress (from #888 to #2ecc71)
-            const r = Math.floor(136 + (46 - 136) * hoverProgress);
-            const g = Math.floor(136 + (204 - 136) * hoverProgress);
-            const b = Math.floor(136 + (113 - 136) * hoverProgress);
+            // Update color to show progress (smooth RGB transition)
+            const r = Math.floor(HOVER_START_RGB.r + (HOVER_END_RGB.r - HOVER_START_RGB.r) * hoverProgress);
+            const g = Math.floor(HOVER_START_RGB.g + (HOVER_END_RGB.g - HOVER_START_RGB.g) * hoverProgress);
+            const b = Math.floor(HOVER_START_RGB.b + (HOVER_END_RGB.b - HOVER_START_RGB.b) * hoverProgress);
             hoveredBox.setAttribute('color', `rgb(${r}, ${g}, ${b})`);
             
             // Update progress ring
@@ -532,6 +536,27 @@
           hoverProgress = 0;
           console.log('Hover ended');
         });
+        
+        // ACCESSIBILITY: Click as fallback for users who cannot use hover
+        // This provides an alternative interaction method for assistive technologies
+        box.addEventListener('click', (e) => {
+          if (currentChapter !== 3) return;
+          if (pathChosen) return; // Already chose a path
+          
+          const clickedBox = e.target;
+          
+          // Clear any ongoing hover
+          if (hoverTimer) {
+            clearInterval(hoverTimer);
+            hoverTimer = null;
+          }
+          if (progressRing) {
+            progressRing.setAttribute('visible', 'false');
+          }
+          
+          console.log('Click selection on', clickedBox.getAttribute('data-next'));
+          handleLabChoice(clickedBox);
+        });
       });
       
       // Extracted handler function for lab choice selection
@@ -572,9 +597,9 @@
           } else if (nextState && nextState.startsWith('END-')) {
             // Finale
             const endings = {
-              'END-HOPE': 'Die Geschichte endet mit einem Licht am Horizont.\\n\\nDeine Reise:\\n' + labStory.join('\\n→ '),
-              'END-NEUTRAL': 'Die Geschichte endet, wie sie begann.\\n\\nDeine Reise:\\n' + labStory.join('\\n→ '),
-              'END-DYSTOPIA': 'Die Geschichte endet in Dunkelheit.\\n\\nDeine Reise:\\n' + labStory.join('\\n→ ')
+              'END-HOPE': 'Die Geschichte endet mit einem Licht am Horizont.\n\nDeine Reise:\n' + labStory.join('\n→ '),
+              'END-NEUTRAL': 'Die Geschichte endet, wie sie begann.\n\nDeine Reise:\n' + labStory.join('\n→ '),
+              'END-DYSTOPIA': 'Die Geschichte endet in Dunkelheit.\n\nDeine Reise:\n' + labStory.join('\n→ ')
             };
             
             document.getElementById('lab-ending').setAttribute('value', endings[nextState] || 'Ende.');
