@@ -302,10 +302,9 @@
       <a-light type="point" position="0 3 0" color="#ffe4b5" intensity="0.8" distance="12"></a-light>
     </a-entity>
 
-    <a-entity id="rig" position="0 0 4" movement-controls="speed: 0.15; fly: false">
+    <a-entity id="rig" position="0 0 4" movement-controls="speed: 0.15; fly: false; controls: gamepad, keyboard">
       <a-camera id="camera" position="0 1.6 0"
                 look-controls="pointerLockEnabled:false"
-                wasd-controls="acceleration:40"
                 cursor="rayOrigin: mouse"
                 raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal">
         <a-entity cursor="fuse:false" geometry="primitive:ring;radiusInner:0.01;radiusOuter:0.02" material="color:#fff"></a-entity>
