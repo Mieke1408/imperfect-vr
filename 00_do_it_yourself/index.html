@@ -712,9 +712,9 @@
     }
 
     // Auto-Start beim Laden - SOFORT starten, ohne auf alles zu warten
-    document.querySelector('a-scene').addEventListener('loaded', function() {
-      console.log('A-Frame geladen!');
-      startGame();
+    window.addEventListener('load', function() {
+      console.log('Seite vollständig geladen');
+      setTimeout(startGame, 100);
     });
 
     function startGame() {
@@ -844,6 +844,7 @@
         pathChosen = true;
         activatePortal(3);
         document.getElementById('deadend-text').setAttribute('visible', 'true');
+       
         document.getElementById('deadend-text').setAttribute('value', 'Ein Weg öffnet sich...');
       }
       
