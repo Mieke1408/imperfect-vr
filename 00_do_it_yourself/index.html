@@ -713,36 +713,57 @@
     document.addEventListener('DOMContentLoaded', function() {
       const scene = document.querySelector('a-scene');
       
-      // Warte explizit auf das 'loaded' Event
-      scene.addEventListener('loaded', function onSceneLoaded() {
-        scene.removeEventListener('loaded', onSceneLoaded);
-        
-        // Kleine Verzögerung, um sicherzustellen, dass alles bereit ist
-        setTimeout(() => {
-          startGame();
-        }, 500);
-      });
+      // Nutze 'loaded' UND stelle sicher, dass die Rig existiert
+      if(scene.hasLoaded) {
+        initializeGame();
+      } else {
+        scene.addEventListener('loaded', initializeGame);
+      }
     });
+
+    function initializeGame() {
+      // Warte, bis die Kamera wirklich existiert
+      const camera = document.getElementById('camera');
+      if(!camera) {
+        setTimeout(initializeGame, 100);
+        return;
+      }
+      
+      // Jetzt starte das Spiel
+      startGame();
+    }
 
     function startGame() {
       gameStarted = true;
+      currentChapter = 1;
       
       // Starte die Musik sofort
       playChapterMusic(1);
       
       // Zeige Titel
-      document.getElementById('chapter-title').textContent = titles[0][0];
-      document.getElementById('subtitle').textContent = titles[0][1];
-      document.getElementById('chapter-title').classList.add('visible');
-      document.getElementById('subtitle').classList.add('visible');
+      const titleEl = document.getElementById('chapter-title');
+      const subtitleEl = document.getElementById('subtitle');
       
+      if(titleEl) {
+        titleEl.textContent = titles[0][0];
+        titleEl.classList.add('visible');
+      }
+      
+      if(subtitleEl) {
+        subtitleEl.textContent = titles[0][1];
+        subtitleEl.classList.add('visible');
+      }
+      
+      // Fade out nach 4s
       setTimeout(() => {
-        document.getElementById('chapter-title').classList.remove('visible');
-        document.getElementById('subtitle').classList.remove('visible');
+        if(titleEl) titleEl.classList.remove('visible');
+        if(subtitleEl) subtitleEl.classList.remove('visible');
       }, 4000);
       
-      // Spawn floatingLetters
-      spawnFloatingLettersAndWords();
+      // Spawn floating letters
+      setTimeout(() => {
+        spawnFloatingLettersAndWords();
+      }, 500);
       
       // Aktiviere Portal nach 15s
       setTimeout(() => {
