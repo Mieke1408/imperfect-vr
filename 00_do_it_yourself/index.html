@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <title>Autor:innenschaft</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+  <!-- VR Keyboard -->
+  <script src="https://cdn.jsdelivr.net/gh/etiennepinchon/aframe-keyboard@1.0.4/dist/aframe-keyboard.min.js"></script>
   <!-- Tone.js entfernt -->
   <style>
     body{margin:0;overflow:hidden}
@@ -13,12 +16,10 @@
     #subtitle{color:#ccc;font-size:16px;font-style:italic;opacity:0;transition:opacity 1s 0.5s}
     #subtitle.visible{opacity:1}
     #hint{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);color:#888;font-size:14px;font-family:Arial}
-    #progress{position:fixed;top:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:999}
-    .prog-dot{width:12px;height:12px;border-radius:50%;background:#333;transition:background 0.5s}
-    .prog-dot.active{background:#4ecdc4}
-    .prog-dot.complete{background:#2ecc71}
-    #portal-hint{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);color:#4ecdc4;font-size:16px;font-family:Georgia,serif;opacity:0;transition:opacity 0.5s}
-    #portal-hint.visible{opacity:1}
+    #start-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:2000}
+    #start-screen h1{color:#fff;font-family:Georgia,serif;font-size:36px;margin-bottom:10px}
+    #start-screen p{color:#888;font-family:Georgia,serif;font-size:16px;margin-bottom:30px}
+    #start-screen button{background:#4ecdc4;border:none;color:#000;padding:15px 40px;font-size:18px;cursor:pointer;font-family:Georgia,serif}
     #ai-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.95);padding:30px;border-radius:10px;display:none;z-index:1000;max-width:600px;width:90%;border:1px solid #4ecdc4}
     #ai-panel h3{color:#4ecdc4;margin:0 0 15px 0;font-family:Georgia,serif}
     #ai-panel textarea{width:100%;height:60px;background:#111;border:1px solid #333;color:#fff;padding:10px;font-family:Georgia,serif;font-size:14px;resize:none;box-sizing:border-box}
@@ -33,10 +34,23 @@
     #voices{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:500;display:none}
     .voice{position:absolute;color:rgba(255,100,100,0.8);font-family:Georgia,serif;font-style:italic;animation:fadeVoice 4s ease-in-out infinite;text-shadow:0 0 10px rgba(255,0,0,0.5)}
     @keyframes fadeVoice{0%,100%{opacity:0;transform:translateY(0)}50%{opacity:1;transform:translateY(-10px)}}
+    #progress{position:fixed;top:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:999}
+    .prog-dot{width:12px;height:12px;border-radius:50%;background:#333;transition:background 0.5s}
+    .prog-dot.active{background:#4ecdc4}
+    .prog-dot.complete{background:#2ecc71}
+    #portal-hint{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);color:#4ecdc4;font-size:16px;font-family:Georgia,serif;opacity:0;transition:opacity 0.5s}
+    #portal-hint.visible{opacity:1}
   </style>
 </head>
 <body>
-  <div id="progress">
+  <div id="start-screen">
+    <h1>Autor:innenschaft</h1>
+    <p>Eine interaktive Erfahrung</p>
+    <!-- <button onclick="startExperience()">Erfahrung starten</button> -->
+    <p style="margin-top:20px;font-size:12px;color:#555">🎧 Kopfhörer empfohlen</p>
+  </div>
+
+  <div id="progress" style="display:none">
     <div class="prog-dot active"></div>
     <div class="prog-dot"></div>
     <div class="prog-dot"></div>
@@ -48,7 +62,7 @@
     <div id="chapter-title"></div>
     <div id="subtitle"></div>
   </div>
-  <div id="hint">WASD = Bewegen · Maus = Umsehen · Klicken = Interagieren</div>
+  <div id="hint" style="display:none">WASD = Bewegen · Maus = Umsehen · Klicken = Interagieren</div>
   <div id="portal-hint"></div>
   <div id="voices"></div>
   
@@ -290,98 +304,53 @@
 
     <a-entity id="rig" position="0 0 4">
       <a-camera id="camera" position="0 1.6 0"
-                look-controls="pointerLockEnabled:true"
+                look-controls="pointerLockEnabled:false"
                 wasd-controls="acceleration:40"
                 cursor="rayOrigin: mouse"
                 raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal">
         <a-entity cursor="fuse:false" geometry="primitive:ring;radiusInner:0.01;radiusOuter:0.02" material="color:#fff"></a-entity>
       </a-camera>
-      
-      <!-- Linker Controller (Movement) -->
-      <a-entity id="left-controller" 
-                 hand-controls="hand: left" 
-                 tracked-controls-webxr="hand: left"
-                 controller-movement>
+
+      <!-- Pico Controller Left -->
+      <a-entity id="leftController" 
+                oculus-touch-controls="hand: left"
+                raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal; far: 300"
+                line="color: #4ecdc4; opacity: 0.75"
+                events>
+        <a-entity cursor="fuse:false" geometry="primitive:ring;radiusInner:0.02;radiusOuter:0.03" material="color:#4ecdc4" position="0 0 -1"></a-entity>
       </a-entity>
-      
-      <!-- Rechter Controller (Interaktion) -->
-      <a-entity id="right-controller"
-                 hand-controls="hand: right"
-                 tracked-controls-webxr="hand: right"
-                 raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal"
-                 line="color: #4ecdc4; opacity: 0.75"
-                 cursor>
+
+      <!-- Pico Controller Right -->
+      <a-entity id="rightController" 
+                oculus-touch-controls="hand: right"
+                raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal; far: 300"
+                line="color: #e94560; opacity: 0.75"
+                events>
+        <a-entity cursor="fuse:false" geometry="primitive:ring;radiusInner:0.02;radiusOuter:0.03" material="color:#e94560" position="0 0 -1"></a-entity>
       </a-entity>
+
+      <!-- VR Keyboard für AI Input -->
+      <a-entity id="vr-keyboard-ai" 
+                position="0 0.5 -1.5" 
+                rotation="-30 0 0"
+                visible="false"
+                a-keyboard="input:#ai-input"></a-entity>
+
+      <!-- VR Keyboard für Final Input -->
+      <a-entity id="vr-keyboard-final" 
+                position="0 0.5 -1.5" 
+                rotation="-30 0 0"
+                visible="false"
+                a-keyboard="input:#final-input"></a-entity>
     </a-entity>
-
   </a-scene>
-  <!-- ⬆️ HIER endet A-Frame -->
 
-  <!-- ⬇️ HIER erst das Script -->
   <script>
-    // Controller-Component registrieren
-    AFRAME.registerComponent('controller-movement', {
-      schema: {
-        speed: { type: 'number', default: 10 },
-        easing: { type: 'boolean', default: true }
-      },
-      
-      init: function() {
-        this.velocity = { x: 0, y: 0, z: 0 };
-        this.rigEl = document.getElementById('rig');
-        this.moveDirection = new THREE.Vector3();
-      },
-
-      tick: function() {
-        const controller = this.el.object3D;
-        const controllerWorldPos = new THREE.Vector3();
-        controller.getWorldPosition(controllerWorldPos);
-        
-        const gamepads = navigator.getGamepads?.() || [];
-        let inputX = 0, inputZ = 0;
-        
-        for(const gp of gamepads) {
-          if(!gp || gp.mapping !== 'xr-standard') continue;
-          
-          if(this.el.id === 'left-controller') {
-            inputX = gp.axes[2] || 0;
-            inputZ = gp.axes[3] || 0;
-          }
-        }
-        
-        if(Math.abs(inputX) < 0.1) inputX = 0;
-        if(Math.abs(inputZ) < 0.1) inputZ = 0;
-        
-        if(inputX !== 0 || inputZ !== 0) {
-          const camera = document.getElementById('camera').object3D;
-          const cameraDir = new THREE.Vector3(0, 0, -1);
-          cameraDir.applyQuaternion(camera.quaternion);
-          cameraDir.y = 0;
-          cameraDir.normalize();
-          
-          const rightDir = new THREE.Vector3(1, 0, 0);
-          rightDir.applyQuaternion(camera.quaternion);
-          rightDir.y = 0;
-          rightDir.normalize();
-          
-          this.moveDirection
-            .copy(cameraDir)
-            .multiplyScalar(inputZ)
-            .addScaledVector(rightDir, inputX);
-          
-          const rigPos = this.rigEl.object3D.position;
-          const moveAmount = this.data.speed * (1 / 60);
-          rigPos.addScaledVector(this.moveDirection, moveAmount);
-        }
-      }
-    });
-
     let currentChapter = 1;
     let portal1Active = false;
     let pathChosen = false;
     let aiUsed = false;
     let gameStarted = false;
-    // Tone.js Variablen entfernt
 
     const titles = [
       ['Kapitel 1: Die Leere','Wo Saetze noch nicht existieren'],
@@ -436,8 +405,9 @@
 
     const libraryWords = ['Gedanke','Traum','Gefuehl','Erinnerung','Seele','Geist','Bewusstsein','Ahnung','Stille','Echo','Hauch','Fluestern','Sehnsucht','Hoffnung','Wehmut','Zeitlosigkeit','Essenz','Praesenz','Stimmung','Atem','Resonanz','Moment','Leere','Raum','Tiefe','Frequenz','Rhythmus','Vibration','Energie','Schwingung'];
 
-    // Audio-Dateien (HTML Audio) – Tone.js Logik entfernt
-    let redSexAudio = null;
+    // Audio Funktionen
+    let redSexAudio = null, blackNoiseAudio = null, libraryAudio = null, schoenbergAudio = null, bleachAudio = null, locrianAudio = null, finaleAudio = null;
+    
     function playRedSex() {
       try {
         if (!redSexAudio) {
@@ -451,7 +421,6 @@
     }
     function stopRedSex(){ if(redSexAudio){ redSexAudio.pause(); redSexAudio.currentTime=0; } }
 
-    let blackNoiseAudio = null;
     function playBlackNoise() {
       try {
         if (!blackNoiseAudio) {
@@ -465,7 +434,6 @@
     }
     function stopBlackNoise(){ if(blackNoiseAudio){ blackNoiseAudio.pause(); blackNoiseAudio.currentTime=0; } }
 
-    let libraryAudio = null;
     function playLibraryMusic() {
       try {
         if (!libraryAudio) {
@@ -479,7 +447,6 @@
     }
     function stopLibraryMusic(){ if(libraryAudio){ libraryAudio.pause(); libraryAudio.currentTime=0; } }
 
-    let schoenbergAudio = null;
     function playSchoenberg() {
       try {
         if (!schoenbergAudio) {
@@ -493,7 +460,6 @@
     }
     function stopSchoenberg(){ if(schoenbergAudio){ schoenbergAudio.pause(); schoenbergAudio.currentTime=0; } }
 
-    let bleachAudio = null;
     function playBleach(){
       try{
         if(!bleachAudio){
@@ -507,7 +473,6 @@
     }
     function stopBleach(){ if(bleachAudio){ bleachAudio.pause(); bleachAudio.currentTime=0; } }
 
-    let locrianAudio = null;
     function playLocrian(){
       try{
         if(!locrianAudio){
@@ -521,7 +486,6 @@
     }
     function stopLocrian(){ if(locrianAudio){ locrianAudio.pause(); locrianAudio.currentTime=0; } }
 
-    let finaleAudio = null;
     function playFinale(){
       try{
         if(!finaleAudio){
@@ -541,7 +505,8 @@
       stopLibraryMusic();
       stopSchoenberg();
       stopLocrian();
-      stopFinale(); // hinzugefügt
+      stopBleach();
+      stopFinale();
     }
 
     function playChapterMusic(chapter){
@@ -555,7 +520,7 @@
       } else if(chapter === 3){
         playSchoenberg();
       } else if(chapter === 4){
-        playLocrian(); // ersetzt
+        playLocrian();
       } else if(chapter === 5){
         playFinale();
       } else if(chapter === 6){
@@ -563,7 +528,6 @@
         spawnLibraryBooks(60);
         spawnLibraryWords();
       }
-      // Kapitel 4 & 5: Keine Tone.js mehr, bewusst still oder nur vorhandene Atmo
     }
 
     const libraryBooksContainerId='library-books-container';
@@ -664,8 +628,67 @@
         if(!p) return;
         p.setAttribute('color','#2ecc71');
         p.setAttribute('material','color:#2ecc71;emissive:#2ecc71;emissiveIntensity:0.6');
-        if(pt){ pt.setAttribute('value','→ Weiter'); pt.setAttribute('color','#ffffff'); }
-      }catch{}
+        if(pt){ 
+          pt.setAttribute('value','→ Weiter'); 
+          pt.setAttribute('color','#ffffff'); 
+        }
+        console.log('Portal', n, 'aktiviert!');
+      }catch(e){
+        console.error('Fehler beim Aktivieren von Portal', n, e);
+      }
+    }
+
+    function updatePortalHint() {
+      const hint = document.getElementById('portal-hint');
+      if(!hint) return;
+      if(currentChapter === 1 && portal1Active) {
+        hint.textContent = '→ Betrete das Portal';
+        hint.classList.add('visible');
+      } else {
+        hint.classList.remove('visible');
+      }
+    }
+
+    function loadChapter(num) {
+      console.log('Lade Kapitel:', num);
+      
+      // Verstecke alle Kapitel
+      document.querySelectorAll('a-entity[id^="chapter"]').forEach(ch => {
+        ch.setAttribute('visible', 'false');
+      });
+      
+      // Zeige neues Kapitel
+      const newChapter = document.getElementById('chapter' + num);
+      if(newChapter) {
+        newChapter.setAttribute('visible', 'true');
+      }
+      
+      currentChapter = num;
+      portal1Active = false;
+      pathChosen = false;
+      
+      // Titel anzeigen
+      if(titles[num-1]) {
+        document.getElementById('chapter-title').textContent = titles[num-1][0];
+        document.getElementById('subtitle').textContent = titles[num-1][1];
+        document.getElementById('chapter-title').classList.add('visible');
+        document.getElementById('subtitle').classList.add('visible');
+        
+        setTimeout(() => {
+          document.getElementById('chapter-title').classList.remove('visible');
+          document.getElementById('subtitle').classList.remove('visible');
+        }, 4000);
+      }
+      
+      // Update Progress Dots
+      document.querySelectorAll('.prog-dot').forEach((dot, idx) => {
+        dot.classList.remove('active', 'complete');
+        if(idx < num-1) dot.classList.add('complete');
+        if(idx === num-1) dot.classList.add('active');
+      });
+      
+      // Musik starten
+      playChapterMusic(num);
     }
 
     function spawnFloatingLettersAndWords(){
@@ -673,6 +696,7 @@
       const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       const words=['Traum','Zeit','Licht','Stille','Wort','Angst','Mut','Nacht','Klang','Raum','Freiheit','Sein','Gedicht','Fluss','Wind','Herz','Schatten','Leben','Blick','Weite','Gedanke','Leere','Stimme','Weg','Frage','Wahrheit','Dunkel','Hoffnung','Seele','Morgen'];
       const blockPos={x:0,y:0.5,z:-3};
+      
       for(let i=0;i<30;i++){
         const letter=letters[Math.floor(Math.random()*letters.length)];
         const el=document.createElement('a-text');
@@ -691,6 +715,7 @@
         el.setAttribute('animation__rot',`property:rotation;to:${Math.random()*360} ${Math.random()*360} ${Math.random()*360};dur:${3000+Math.random()*3000};loop:true;easing:linear`);
         document.getElementById('chapter1').appendChild(el);
       }
+      
       for(let i=0;i<30;i++){
         const word=words[Math.floor(Math.random()*words.length)];
         const el=document.createElement('a-text');
@@ -711,202 +736,194 @@
       }
     }
 
-    // Auto-Start beim Laden - SOFORT starten, ohne auf alles zu warten
-    window.addEventListener('load', function() {
-      console.log('Seite vollständig geladen');
-      setTimeout(startGame, 100);
-    });
-
-    function startGame() {
-      console.log('Game startet...');
-      gameStarted = true;
-      currentChapter = 1;
-      
-      // Zeige Titel SOFORT
-      const titleEl = document.getElementById('chapter-title');
-      const subtitleEl = document.getElementById('subtitle');
-      
-      if(titleEl) {
-        titleEl.textContent = titles[0][0];
-        titleEl.classList.add('visible');
-      }
-      
-      if(subtitleEl) {
-        subtitleEl.textContent = titles[0][1];
-        subtitleEl.classList.add('visible');
-      }
-      
-      // Fade out nach 4s
-      setTimeout(() => {
-        if(titleEl) titleEl.classList.remove('visible');
-        if(subtitleEl) subtitleEl.classList.remove('visible');
-      }, 4000);
-      
-      // Musik & Content laden
-      playChapterMusic(1);
-      spawnFloatingLettersAndWords();
-      
-      // Portal nach 15s
-      setTimeout(() => {
-        portal1Active = true;
-        activatePortal(1);
-      }, 5000); // ← nur 5 Sekunden
-    }
-
-    // Lazy-Load für andere Kapitel
-    function loadChapter(chapterNum) {
-      // Verstecke ALLE Kapitel
-      for(let i=1; i<=6; i++) {
-        const ch = document.getElementById('chapter'+i);
-        if(ch) {
-          if(i === chapterNum) {
-            ch.setAttribute('visible', 'true');
-          } else {
-            ch.setAttribute('visible', 'false');
-          }
-        }
-      }
-      
-      currentChapter = chapterNum;
-      
-      // Stop alte Musik
-      stopAllAudio();
-      
-      // Spiele neue Musik
-      playChapterMusic(chapterNum);
-      
-      // Zeige neuen Titel
-      const titleEl = document.getElementById('chapter-title');
-      const subtitleEl = document.getElementById('subtitle');
-      
-      if(titleEl) {
-        titleEl.textContent = titles[chapterNum-1][0];
-        titleEl.classList.add('visible');
-      }
-      
-      if(subtitleEl) {
-        subtitleEl.textContent = titles[chapterNum-1][1];
-        subtitleEl.classList.add('visible');
-      }
-      
-      setTimeout(() => {
-        if(titleEl) titleEl.classList.remove('visible');
-        if(subtitleEl) subtitleEl.classList.remove('visible');
-      }, 4000);
-      
-      // ⬇️ WICHTIG: Progress-Dots und Portale updaten!
-      updateProgress(chapterNum);
-    }
-    
-    function updateProgress(chapter) {
-      const dots = document.querySelectorAll('.prog-dot');
-      dots.forEach((dot, i) => {
-        if(i < chapter - 1) {
-          dot.classList.add('complete');
-          dot.classList.remove('active');
-        } else if(i === chapter - 1) {
-          dot.classList.add('active');
-          dot.classList.remove('complete');
-        } else {
-          dot.classList.remove('active', 'complete');
-        }
-      });
-    }
-
-    // ⬇️ FEHLENDE EVENT-LISTENER FÜR KLICKS
-    document.addEventListener('click', function(evt) {
-      if(!gameStarted) return;
-      
-      const target = evt.target;
-      
-      // Portal 1 -> Kapitel 2
-      if(target.id === 'portal1' && portal1Active) {
-        loadChapter(2);
-      }
-      
-      // Portal 2 -> Kapitel 3
-      if(target.id === 'portal2') {
-        loadChapter(3);
-      }
-      
-      // Portal 3 -> Kapitel 4 (nur wenn Pfad gewählt)
-      if(target.id === 'portal3' && pathChosen) {
-        loadChapter(4);
-      }
-      
-      // Portal 4 -> Kapitel 5 (nur wenn KI genutzt)
-      if(target.id === 'portal4' && aiUsed) {
-        loadChapter(5);
-      }
-      
-      // Pfad-Wahl in Kapitel 3
-      if(target.classList.contains('path-choice')) {
-        pathChosen = true;
-        activatePortal(3);
-        document.getElementById('deadend-text').setAttribute('visible', 'true');
-       
-        document.getElementById('deadend-text').setAttribute('value', 'Ein Weg öffnet sich...');
-      }
-      
-      // KI-Terminal in Kapitel 4
-      if(target.classList.contains('interact-ai') || target.id === 'ai-terminal') {
-        document.getElementById('ai-panel').style.display = 'block';
-      }
-      
-      // Final-Desk in Kapitel 5
-      if(target.classList.contains('interact-final') || target.id === 'final-desk') {
-        document.getElementById('final-panel').style.display = 'block';
-      }
-      
-      // Exit -> Kapitel 6
-      if(target.id === 'exit-door') {
-        loadChapter(6);
-      }
-    });
-
-    // VR-Controller-Events
-    document.querySelector('a-scene').addEventListener('loaded', function() {
-      const rightController = document.getElementById('right-controller');
-      if(rightController) {
-        rightController.addEventListener('triggerdown', function(evt) {
-          const intersection = evt.target.components.raycaster.intersectedEls[0];
-          if(intersection) {
-            intersection.click();
-          }
-        });
-      }
-    });
-
-    // ⬇️ FEHLENDE FUNKTIONEN FÜR UI-PANELS
     function generateAI() {
       const input = document.getElementById('ai-input').value.toLowerCase().trim();
-      const output = document.getElementById('ai-output');
-      const text = document.getElementById('ai-text');
+      const key = input in aiTexts ? input : 'default';
+      const text = aiTexts[key];
       
-      const result = aiTexts[input] || aiTexts['default'];
-      text.textContent = result;
-      output.style.display = 'block';
-      
+      document.getElementById('ai-text').textContent = text;
+      document.getElementById('ai-output').style.display = 'block';
       aiUsed = true;
+      
+      // Portal 4 aktivieren nach AI-Nutzung
       activatePortal(4);
     }
 
     function closeAI() {
       document.getElementById('ai-panel').style.display = 'none';
+      
+      // Verstecke VR Keyboard
+      const vrKeyboard = document.getElementById('vr-keyboard-ai');
+      if(vrKeyboard) {
+        vrKeyboard.setAttribute('visible', 'false');
+      }
     }
 
     function submitFinal() {
-      const input = document.getElementById('final-input').value.trim();
-      if(input.length < 5) {
-        alert('Schreib mindestens EINEN Satz...');
-        return;
+      const text = document.getElementById('final-input').value;
+      if(text.trim()) {
+        console.log('Dein Satz:', text);
+        
+        const exitText = document.getElementById('exit-text');
+        if(exitText) {
+          exitText.setAttribute('value', 'AUSGANG OFFEN');
+          exitText.setAttribute('color', '#2ecc71');
+        }
+        
+        const exitDoor = document.getElementById('exit-door');
+        if(exitDoor) {
+          exitDoor.setAttribute('color', '#2ecc71');
+          exitDoor.setAttribute('material', 'color:#2ecc71;emissive:#2ecc71;emissiveIntensity:0.5');
+        }
+        
+        document.getElementById('final-panel').style.display = 'none';
+        
+        // Verstecke VR Keyboard
+        const vrKeyboard = document.getElementById('vr-keyboard-final');
+        if(vrKeyboard) {
+          vrKeyboard.setAttribute('visible', 'false');
+        }
       }
+    }
+
+    // Portal & Interaktions-Events
+    const scene = document.querySelector('a-scene');
+    
+    scene.addEventListener('loaded', function() {
+      console.log('A-Frame Scene geladen, registriere Event-Listener');
       
-      document.getElementById('final-panel').style.display = 'none';
-      document.getElementById('exit-text').setAttribute('value', '→ AUSGANG OFFEN');
-      document.getElementById('exit-text').setAttribute('color', '#2ecc71');
+      // Portal 1
+      const portal1 = document.getElementById('portal1');
+      if(portal1) {
+       
+        portal1.addEventListener('click', function() {
+          console.log('Portal 1 geklickt, active:', portal1Active);
+          if(portal1Active) loadChapter(2);
+        });
+      }
+
+      // Portal 2
+      const portal2 = document.getElementById('portal2');
+      if(portal2) {
+        portal2.addEventListener('click', function() {
+          console.log('Portal 2 geklickt');
+          loadChapter(3);
+        });
+      }
+
+      // Portal 3
+      const portal3 = document.getElementById('portal3');
+      if(portal3) {
+        portal3.addEventListener('click', function() {
+          console.log('Portal 3 geklickt, pathChosen:', pathChosen);
+          if(pathChosen) {
+            loadChapter(4);
+          } else {
+            console.log('Pfad muss erst gewählt werden!');
+          }
+        });
+      }
+
+      // Portal 4
+      const portal4 = document.getElementById('portal4');
+      if(portal4) {
+        portal4.addEventListener('click', function() {
+          if(aiUsed) loadChapter(5);
+        });
+      }
+
+      // Path Choices
+      document.querySelectorAll('.path-choice').forEach(el => {
+        el.addEventListener('click', function() {
+          console.log('Path gewählt:', el.id);
+          pathChosen = true;
+          activatePortal(3);
+          updatePortalHint();
+          const deadend = document.getElementById('deadend-text');
+          if(deadend) {
+            deadend.setAttribute('visible', 'true');
+            deadend.setAttribute('value', 'Ein Weg öffnet sich...');
+          }
+        });
+      });
+
+      // AI Terminal
+      const aiTerminal = document.getElementById('ai-terminal');
+      if(aiTerminal) {
+        aiTerminal.addEventListener('click', function() {
+          document.getElementById('ai-panel').style.display = 'block';
+          
+          // Zeige VR Keyboard
+          const vrKeyboard = document.getElementById('vr-keyboard-ai');
+          if(vrKeyboard) {
+            vrKeyboard.setAttribute('visible', 'true');
+          }
+        });
+      }
+
+      // Final Desk
+      const finalDesk = document.getElementById('final-desk');
+      if(finalDesk) {
+        finalDesk.addEventListener('click', function() {
+          document.getElementById('final-panel').style.display = 'block';
+          
+          // Zeige VR Keyboard
+          const vrKeyboard = document.getElementById('vr-keyboard-final');
+          if(vrKeyboard) {
+            vrKeyboard.setAttribute('visible', 'true');
+          }
+        });
+      }
+
+      // Exit Door
+      const exitDoor = document.getElementById('exit-door');
+      if(exitDoor) {
+        exitDoor.addEventListener('click', function() {
+          loadChapter(6);
+        });
+      }
+    });
+
+    // Auto-Start
+    function initGame() {
+      console.log('Game initialisiert...');
+      
+      document.getElementById('start-screen').style.display = 'none';
+      document.getElementById('progress').style.display = 'flex';
+      document.getElementById('hint').style.display = 'block';
+      
+      gameStarted = true;
+      currentChapter = 1;
+      
+      document.getElementById('chapter-title').textContent = titles[0][0];
+      document.getElementById('subtitle').textContent = titles[0][1];
+      document.getElementById('chapter-title').classList.add('visible');
+      document.getElementById('subtitle').classList.add('visible');
+      
+      setTimeout(() => {
+        document.getElementById('chapter-title').classList.remove('visible');
+        document.getElementById('subtitle').classList.remove('visible');
+      }, 4000);
+      
+      playChapterMusic(1);
+      updatePortalHint();
+      
+      setTimeout(() => spawnFloatingLettersAndWords(), 500);
+      
+      // Portal nach 15 Sekunden aktivieren
+      setTimeout(() => {
+        portal1Active = true;
+        activatePortal(1);
+        updatePortalHint();
+        console.log('Portal 1 aktiviert nach 15s!');
+      }, 15000);
+    }
+
+    if(scene.hasLoaded) {
+      initGame();
+    } else {
+      scene.addEventListener('loaded', initGame);
     }
   </script>
-
 </body>
 </html>
