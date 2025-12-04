@@ -374,16 +374,20 @@
         </a-entity>
       </a-camera>
       
-      <!-- Linker Controller (Bewegung) -->
+      <!-- Linker Controller (Bewegung) - ohne Teleport -->
       <a-entity id="leftHand"
-                laser-controls="hand: left"
+                oculus-touch-controls="hand: left"
+                vive-controls="hand: left"
+                windows-motion-controls="hand: left"
                 raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal; far: 15; showLine: true"
                 line="color: #4ecdc4; opacity: 0.75">
       </a-entity>
       
-      <!-- Rechter Controller (Interaktion) -->
+      <!-- Rechter Controller (Interaktion) - ohne Teleport -->
       <a-entity id="rightHand"
-                laser-controls="hand: right"
+                oculus-touch-controls="hand: right"
+                vive-controls="hand: right"
+                windows-motion-controls="hand: right"
                 raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal; far: 15; showLine: true"
                 line="color: #e94560; opacity: 0.75">
       </a-entity>
@@ -1461,10 +1465,10 @@
       }, 15000);
     }
 
-    if(scene.hasLoaded) {
+    if(sceneEl.hasLoaded) {
       initGame();
     } else {
-      scene.addEventListener('loaded', initGame);
+      sceneEl.addEventListener('loaded', initGame);
     }
 
     // Manueller VR-Button (Fallback)
