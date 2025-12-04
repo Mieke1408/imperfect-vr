@@ -39,7 +39,7 @@
       </a-assets>
 
       <!-- replace the standard camera with a new one that supports a fusion cursor -->
-      <a-entity id="player" position="0 0 3.8">
+      <a-entity id="player" position="0 0 3.8" movement-controls>
         <a-camera>
           <a-entity id="cursor" cursor="fuseTimeout: 1500"
                     raycaster="objects: .clickable"
