@@ -296,10 +296,86 @@
                 raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal">
         <a-entity cursor="fuse:false" geometry="primitive:ring;radiusInner:0.01;radiusOuter:0.02" material="color:#fff"></a-entity>
       </a-camera>
+      
+      <!-- Linker Controller (Movement) -->
+      <a-entity id="left-controller" 
+                 hand-controls="hand: left" 
+                 tracked-controls-webxr="hand: left"
+                 controller-movement>
+      </a-entity>
+      
+      <!-- Rechter Controller (Interaktion) -->
+      <a-entity id="right-controller"
+                 hand-controls="hand: right"
+                 tracked-controls-webxr="hand: right"
+                 raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal"
+                 line="color: #4ecdc4; opacity: 0.75"
+                 cursor>
+      </a-entity>
     </a-entity>
+
   </a-scene>
 
   <script>
+    AFRAME.registerComponent('controller-movement', {
+      schema: {
+        speed: { type: 'number', default: 10 },
+        easing: { type: 'boolean', default: true }
+      },
+      
+      init: function() {
+        this.velocity = { x: 0, y: 0, z: 0 };
+        this.rigEl = document.getElementById('rig');
+        this.moveDirection = new THREE.Vector3();
+      },
+
+      tick: function() {
+        const controller = this.el.object3D;
+        const controllerWorldPos = new THREE.Vector3();
+        controller.getWorldPosition(controllerWorldPos);
+        
+        // Gamepad API für Stick-Input
+        const gamepads = navigator.getGamepads?.() || [];
+        let inputX = 0, inputZ = 0;
+        
+        for(const gp of gamepads) {
+          if(!gp || gp.mapping !== 'xr-standard') continue;
+          
+          // Linker Stick: axes[2] (X), axes[3] (Y)
+          if(this.el.id === 'left-controller') {
+            inputX = gp.axes[2] || 0;
+            inputZ = gp.axes[3] || 0;
+          }
+        }
+        
+        // Deadzone
+        if(Math.abs(inputX) < 0.1) inputX = 0;
+        if(Math.abs(inputZ) < 0.1) inputZ = 0;
+        
+        if(inputX !== 0 || inputZ !== 0) {
+          const camera = document.getElementById('camera').object3D;
+          const cameraDir = new THREE.Vector3(0, 0, -1);
+          cameraDir.applyQuaternion(camera.quaternion);
+          cameraDir.y = 0;
+          cameraDir.normalize();
+          
+          const rightDir = new THREE.Vector3(1, 0, 0);
+          rightDir.applyQuaternion(camera.quaternion);
+          rightDir.y = 0;
+          rightDir.normalize();
+          
+          this.moveDirection
+            .copy(cameraDir)
+            .multiplyScalar(inputZ)
+            .addScaledVector(rightDir, inputX);
+          
+          const rigPos = this.rigEl.object3D.position;
+          const moveAmount = this.data.speed * (1 / 60); // Framerate-unabhängig
+          rigPos.addScaledVector(this.moveDirection, moveAmount);
+        }
+      }
+    });
+
     let currentChapter = 1;
     let portal1Active = false;
     let pathChosen = false;
