@@ -713,27 +713,38 @@
     document.addEventListener('DOMContentLoaded', function() {
       const scene = document.querySelector('a-scene');
       
-      // Warte, bis die Scene vollständig geladen ist
-      if (scene.hasLoaded) {
-        startGame();
-      } else {
-        scene.addEventListener('loaded', startGame);
-      }
+      // Warte explizit auf das 'loaded' Event
+      scene.addEventListener('loaded', function onSceneLoaded() {
+        scene.removeEventListener('loaded', onSceneLoaded);
+        
+        // Kleine Verzögerung, um sicherzustellen, dass alles bereit ist
+        setTimeout(() => {
+          startGame();
+        }, 500);
+      });
     });
 
     function startGame() {
       gameStarted = true;
+      
+      // Starte die Musik sofort
+      playChapterMusic(1);
+      
+      // Zeige Titel
       document.getElementById('chapter-title').textContent = titles[0][0];
       document.getElementById('subtitle').textContent = titles[0][1];
       document.getElementById('chapter-title').classList.add('visible');
       document.getElementById('subtitle').classList.add('visible');
+      
       setTimeout(() => {
         document.getElementById('chapter-title').classList.remove('visible');
         document.getElementById('subtitle').classList.remove('visible');
       }, 4000);
-      playChapterMusic(1);
-      updatePortalHint();
-      setTimeout(() => spawnFloatingLettersAndWords(), 500);
+      
+      // Spawn floatingLetters
+      spawnFloatingLettersAndWords();
+      
+      // Aktiviere Portal nach 15s
       setTimeout(() => {
         portal1Active = true;
         activatePortal(1);
