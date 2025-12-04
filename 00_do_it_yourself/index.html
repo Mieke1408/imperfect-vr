@@ -751,13 +751,24 @@
 
     // Lazy-Load für andere Kapitel
     function loadChapter(chapterNum) {
-      // Verstecke aktuelles Kapitel
+      // Verstecke ALLE Kapitel
       for(let i=1; i<=6; i++) {
         const ch = document.getElementById('chapter'+i);
-        if(ch) ch.setAttribute('visible', i === chapterNum);
+        if(ch) {
+          if(i === chapterNum) {
+            ch.setAttribute('visible', 'true');
+          } else {
+            ch.setAttribute('visible', 'false');
+          }
+        }
       }
       
       currentChapter = chapterNum;
+      
+      // Stop alte Musik
+      stopAllAudio();
+      
+      // Spiele neue Musik
       playChapterMusic(chapterNum);
       
       // Zeige neuen Titel
