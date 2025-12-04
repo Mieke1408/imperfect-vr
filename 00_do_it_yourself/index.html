@@ -40,6 +40,27 @@
     .prog-dot.complete{background:#2ecc71}
     #portal-hint{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);color:#4ecdc4;font-size:16px;font-family:Georgia,serif;opacity:0;transition:opacity 0.5s}
     #portal-hint.visible{opacity:1}
+
+    /* VR Button sichtbar machen */
+    .a-enter-vr-button {
+      position: fixed !important;
+      bottom: 20px !important;
+      right: 20px !important;
+      z-index: 9999 !important;
+      background-color: #2196F3 !important;
+      border: 2px solid #fff !important;
+      border-radius: 8px !important;
+      padding: 12px 24px !important;
+      font-size: 16px !important;
+      font-weight: bold !important;
+      color: white !important;
+      cursor: pointer !important;
+      display: block !important;
+    }
+
+    .a-enter-vr-button:hover {
+      background-color: #1976D2 !important;
+    }
   </style>
 </head>
 <body>
@@ -85,7 +106,7 @@
   <!-- Szenen unverändert -->
   <!-- (A-Frame Kapitel bleiben wie im Original; aus Platzgründen nicht erneut kommentiert) -->
   <!-- BEGINN SZENE -->
-  <a-scene>
+  <a-scene vr-mode-ui="enabled: true">
     <!-- Kapitel 1 -->
     <a-entity id="chapter1" visible="true">
       <a-sky color="#f5f5f5"></a-sky>
@@ -302,7 +323,7 @@
       <a-light type="point" position="0 3 0" color="#ffe4b5" intensity="0.8" distance="12"></a-light>
     </a-entity>
 
-    <a-entity id="rig" position="0 0 4" movement-controls="speed: 0.15; fly: false; controls: gamepad, keyboard">
+    <a-entity id="rig" position="0 0 4" movement-controls="speed: 0.15; fly: false; controls: gamepad, keyboard, touch">
       <a-camera id="camera" position="0 1.6 0"
                 cursor="rayOrigin: mouse"
                 raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal">
@@ -312,6 +333,7 @@
       <!-- Pico Controller Left -->
       <a-entity id="leftController" 
                 oculus-touch-controls="hand: left"
+                thumbstick-logging
                 raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal; far: 300"
                 line="color: #4ecdc4; opacity: 0.75"
                 events>
@@ -321,6 +343,7 @@
       <!-- Pico Controller Right -->
       <a-entity id="rightController" 
                 oculus-touch-controls="hand: right"
+                thumbstick-logging
                 raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal; far: 300"
                 line="color: #e94560; opacity: 0.75"
                 events>
@@ -928,6 +951,42 @@
     } else {
       scene.addEventListener('loaded', initGame);
     }
+
+    // Manueller VR-Button (Fallback)
+    function enterVR() {
+      const scene = document.querySelector('a-scene');
+      if (scene && scene.enterVR) {
+        scene.enterVR();
+      }
+    }
+
+    // Custom VR Button erstellen falls nötig
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        const vrButton = document.querySelector('.a-enter-vr-button');
+        if (!vrButton || !vrButton.offsetParent) {
+          const customButton = document.createElement('button');
+          customButton.textContent = 'VR STARTEN';
+          customButton.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            background: #2196F3;
+            color: white;
+            border: 2px solid white;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+          `;
+          customButton.onclick = enterVR;
+          document.body.appendChild(customButton);
+          console.log('Custom VR Button erstellt');
+        }
+      }, 1000);
+    });
   </script>
 </body>
 </html>
