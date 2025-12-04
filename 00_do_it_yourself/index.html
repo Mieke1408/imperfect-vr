@@ -355,14 +355,38 @@
       <a-light type="point" position="0 3 0" color="#ffe4b5" intensity="0.8" distance="12"></a-light>
     </a-entity>
 
-    <a-entity id="rig" position="0 0 4" 
-          movement-controls="speed: 0.03; fly: false; controls: gamepad, keyboard, touch"
-          oculus-touch-controls="hand: left"
-          oculus-touch-controls="hand: right">
+    <!-- VR Rig mit Controller & Blicksteuerung -->
+    <a-entity id="rig" position="0 0 4" thumbstick-movement="speed: 3">
       <a-camera id="camera" position="0 1.6 0"
-                cursor="rayOrigin: mouse"
-                raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal">
+                look-controls="pointerLockEnabled: false"
+                wasd-controls="enabled: true; acceleration: 30"
+                cursor="rayOrigin: mouse; fuse: false"
+                raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal; far: 20">
+        <!-- Cursor für VR (zeigt wohin man schaut) -->
+        <a-entity cursor="fuse: true; fuseTimeout: 1500"
+                  position="0 0 -1"
+                  geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
+                  material="color: #4ecdc4; shader: flat"
+                  animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.1 0.1 0.1; to: 1 1 1"
+                  animation__fusing="property: scale; startEvents: fusing; easing: easeInCubic; dur: 1500; from: 1 1 1; to: 0.1 0.1 0.1"
+                  animation__mouseleave="property: scale; startEvents: mouseleave; easing: easeInCubic; dur: 500; to: 1 1 1"
+                  raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal; far: 20">
+        </a-entity>
       </a-camera>
+      
+      <!-- Linker Controller (Bewegung) -->
+      <a-entity id="leftHand"
+                laser-controls="hand: left"
+                raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal; far: 15; showLine: true"
+                line="color: #4ecdc4; opacity: 0.75">
+      </a-entity>
+      
+      <!-- Rechter Controller (Interaktion) -->
+      <a-entity id="rightHand"
+                laser-controls="hand: right"
+                raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal; far: 15; showLine: true"
+                line="color: #e94560; opacity: 0.75">
+      </a-entity>
     </a-entity>
   </a-scene>
 
@@ -896,10 +920,392 @@
     }
 
     // Portal & Interaktions-Events
-    const scene = document.querySelector('a-scene');
+    let sceneEl = document.querySelector('a-scene');
     
-    scene.addEventListener('loaded', function() {
+    sceneEl.addEventListener('loaded', function() {
       console.log('A-Frame Scene geladen, registriere Event-Listener');
+      
+      // Portal 1
+      const portal1 = document.getElementById('portal1');
+      if(portal1) {
+       
+        portal1.addEventListener('click', function() {
+          console.log('Portal 1 geklickt, active:', portal1Active);
+          if(portal1Active) loadChapter(2);
+        });
+      }
+
+      // Portal 2
+      const portal2 = document.getElementById('portal2');
+      if(portal2) {
+        portal2.addEventListener('click', function() {
+          console.log('Portal 2 geklickt');
+          loadChapter(3);
+        });
+      }
+
+      // Portal 3
+      const portal3 = document.getElementById('portal3');
+      if(portal3) {
+        portal3.addEventListener('click', function() {
+          console.log('Portal 3 geklickt, pathChosen:', pathChosen);
+          if(pathChosen) {
+            loadChapter(4);
+          } else {
+            console.log('Pfad muss erst gewählt werden!');
+          }
+        });
+      }
+
+      // Portal 4
+
+      const portal4 = document.getElementById('portal4');
+      if(portal4) {
+        portal4.addEventListener('click', function() {
+          if(aiUsed) loadChapter(5);
+        });
+      }
+
+      // Path Choices
+      document.querySelectorAll('.path-choice').forEach(el => {
+        el.addEventListener('click', function() {
+          console.log('Path gewählt:', el.id);
+          pathChosen = true;
+          
+          // Entferne vorherige Highlight
+          document.querySelectorAll('.path-choice').forEach(box => {
+            box.setAttribute('color', box.id === 'path-left' ? '#3498db' : 
+                                     box.id === 'path-middle' ? '#9b59b6' : '#e67e22');
+            box.setAttribute('material', 'opacity:0.8');
+          });
+          
+          // Highlight aktuelle Box
+          el.setAttribute('color', '#2ecc71');
+          el.setAttribute('material', 'color:#2ecc71;emissive:#2ecc71;emissiveIntensity:0.8;opacity:1');
+          
+          // Zeige Bestätigung – nur eine Perspektive pro Block
+          const deadend = document.getElementById('deadend-text');
+          if(deadend) {
+            deadend.setAttribute('visible', 'true');
+            
+            let chosenText = '';
+            if(el.id === 'path-left') {
+              chosenText = "UTOPISCH:\nDie Technologie befreit den menschlichen Geist.\nKreativitaet wird unbegrenzt und demokratisiert.\nJeder kann sein volles Potenzial entfalten.";
+            } else if(el.id === 'path-middle') {
+              chosenText = "NEUTRAL:\nMensch und Maschine arbeiten zusammen.\nJeder nutzt seine eigenen Staerken optimal.\nDas Ergebnis ist besser als allein.";
+            } else {
+              chosenText = "DYSTOPISCH:\nWir verlieren uns selbst in unseren Erfindungen.\nIndividualitaet wird zur Datenspur.\nAuthentizitaet stirbt im Algorithmus.";
+            }
+            
+            deadend.setAttribute('value', chosenText);
+            deadend.setAttribute('color', '#2ecc71');
+            deadend.setAttribute('scale', '0.5 0.5 0.5');
+          }
+          
+          activatePortal(3);
+          updatePortalHint();
+        });
+      });
+
+      // AI Terminal
+      const aiTerminal = document.getElementById('ai-terminal');
+      if(aiTerminal) {
+        aiTerminal.addEventListener('click', function() {
+          document.getElementById('ai-panel').style.display = 'block';
+          
+          // Zeige VR Keyboard
+          const vrKeyboard = document.getElementById('vr-keyboard-ai');
+          if(vrKeyboard) {
+            vrKeyboard.setAttribute('visible', 'true');
+          }
+        });
+      }
+
+      // Final Desk
+      const finalDesk = document.getElementById('final-desk');
+      if(finalDesk) {
+        finalDesk.addEventListener('click', function() {
+          document.getElementById('final-panel').style.display = 'block';
+          
+          // Zeige VR Keyboard
+          const vrKeyboard = document.getElementById('vr-keyboard-final');
+          if(vrKeyboard) {
+            vrKeyboard.setAttribute('visible', 'true');
+          }
+        });
+      }
+
+      // Exit Door
+      const exitDoor = document.getElementById('exit-door');
+      if(exitDoor) {
+        exitDoor.addEventListener('click', function() {
+          loadChapter(6);
+        });
+      }
+    });
+
+    // Auto-Start
+    function initGame() {
+      console.log('Game initialisiert...');
+      
+      document.getElementById('start-screen').style.display = 'none';
+      document.getElementById('progress').style.display = 'flex';
+      document.getElementById('hint').style.display = 'block';
+      
+      gameStarted = true;
+      currentChapter = 1;
+      
+      document.getElementById('chapter-title').textContent = titles[0][0];
+      document.getElementById('subtitle').textContent = titles[0][1];
+      document.getElementById('chapter-title').classList.add('visible');
+      document.getElementById('subtitle').classList.add('visible');
+      
+      setTimeout(() => {
+        document.getElementById('chapter-title').classList.remove('visible');
+        document.getElementById('subtitle').classList.remove('visible');
+      }, 4000);
+      
+      playChapterMusic(1);
+      updatePortalHint();
+      
+      setTimeout(() => spawnFloatingLettersAndWords(), 500);
+      
+      // Portal nach 15 Sekunden aktivieren
+      setTimeout(() => {
+        portal1Active = true;
+        activatePortal(1);
+        updatePortalHint();
+        console.log('Portal 1 aktiviert nach 15s!');
+      }, 15000);
+    }
+
+    if(sceneEl.hasLoaded) {
+      initGame();
+    } else {
+      sceneEl.addEventListener('loaded', initGame);
+    }
+
+    // Manueller VR-Button (Fallback)
+    function enterVR() {
+      const scene = document.querySelector('a-scene');
+      if (scene && scene.enterVR) {
+        scene.enterVR();
+      }
+    }
+
+    // Custom VR Button erstellen falls nötig
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        const vrButton = document.querySelector('.a-enter-vr-button');
+        if (!vrButton || !vrButton.offsetParent) {
+          const customButton = document.createElement('button');
+          customButton.textContent = 'VR STARTEN';
+          customButton.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            background: #2196F3;
+            color: white;
+            border: 2px solid white;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+          `;
+          customButton.onclick = enterVR;
+          document.body.appendChild(customButton);
+          console.log('Custom VR Button erstellt');
+        }
+      }, 1000);
+    });
+    
+    // ===== VR THUMBSTICK MOVEMENT COMPONENT =====
+    AFRAME.registerComponent('thumbstick-movement', {
+      schema: {
+        speed: { type: 'number', default: 3 },
+        turnSpeed: { type: 'number', default: 1.5 },
+        fly: { type: 'boolean', default: false }
+      },
+      
+      init: function() {
+        this.moveVector = { x: 0, y: 0 };
+        this.turnValue = 0;
+        
+        // Event-Listener für beide Hände
+        this.onThumbstickMoved = this.onThumbstickMoved.bind(this);
+        this.onAxisMove = this.onAxisMove.bind(this);
+        
+        // Warte bis Controller verfügbar sind
+        const scene = this.el.sceneEl;
+        scene.addEventListener('enter-vr', () => {
+          console.log('VR Modus gestartet - Controller aktiviert');
+          this.setupControllerListeners();
+        });
+        
+        // Auch sofort versuchen (für bereits verbundene Controller)
+        this.setupControllerListeners();
+      },
+      
+      setupControllerListeners: function() {
+        const leftHand = document.getElementById('leftHand');
+        const rightHand = document.getElementById('rightHand');
+        
+        if (leftHand) {
+          leftHand.addEventListener('thumbstickmoved', this.onThumbstickMoved);
+          leftHand.addEventListener('axismove', this.onAxisMove);
+        }
+        
+        if (rightHand) {
+          rightHand.addEventListener('thumbstickmoved', (evt) => {
+            this.turnValue = evt.detail.x;
+          });
+          rightHand.addEventListener('axismove', (evt) => {
+            if (evt.detail.axis) {
+              this.turnValue = evt.detail.axis[2] || evt.detail.axis[0] || 0;
+            }
+          });
+        }
+        
+        // Globales axismove Event als Fallback
+        this.el.sceneEl.addEventListener('axismove', (evt) => {
+          const hand = this.getControllerHand(evt.target);
+          if (hand === 'left') {
+            if (evt.detail.axis) {
+              this.moveVector.x = evt.detail.axis[2] || evt.detail.axis[0] || 0;
+              this.moveVector.y = evt.detail.axis[3] || evt.detail.axis[1] || 0;
+            }
+          } else if (hand === 'right') {
+            if (evt.detail.axis) {
+              this.turnValue = evt.detail.axis[2] || evt.detail.axis[0] || 0;
+            }
+          }
+        });
+      },
+      
+      getControllerHand: function(el) {
+        if (!el) return null;
+        const id = el.id || '';
+        if (id.includes('left') || id.includes('Left')) return 'left';
+        if (id.includes('right') || id.includes('Right')) return 'right';
+        
+        // Prüfe Attribute
+        const attrs = ['oculus-touch-controls', 'vive-controls', 'windows-motion-controls', 'hand-controls', 'laser-controls'];
+        for (const attr of attrs) {
+          const val = el.getAttribute(attr);
+          if (val && val.hand) return val.hand;
+        }
+        return null;
+      },
+      
+      onThumbstickMoved: function(evt) {
+        this.moveVector.x = evt.detail.x;
+        this.moveVector.y = evt.detail.y;
+      },
+      
+      onAxisMove: function(evt) {
+        if (evt.detail.axis) {
+          this.moveVector.x = evt.detail.axis[2] || evt.detail.axis[0] || 0;
+          this.moveVector.y = evt.detail.axis[3] || evt.detail.axis[1] || 0;
+        }
+      },
+      
+      tick: function(time, delta) {
+        if (!delta) return;
+        
+        const dt = delta / 1000;
+        const deadzone = 0.15;
+        
+        // Bewegungseingabe mit Deadzone
+        const inputX = Math.abs(this.moveVector.x) > deadzone ? this.moveVector.x : 0;
+        const inputY = Math.abs(this.moveVector.y) > deadzone ? this.moveVector.y : 0;
+        const turnX = Math.abs(this.turnValue) > deadzone ? this.turnValue : 0;
+        
+        // Bewegung
+        if (inputX !== 0 || inputY !== 0) {
+          const camera = document.getElementById('camera');
+          if (!camera) return;
+          
+          const cameraEl = camera.object3D;
+          
+          // Blickrichtung der Kamera holen
+          const direction = new THREE.Vector3();
+          cameraEl.getWorldDirection(direction);
+          
+          // Nur horizontale Bewegung (kein Fliegen)
+          if (!this.data.fly) {
+            direction.y = 0;
+          }
+          direction.normalize();
+          
+          // Rechts-Vektor berechnen
+          const right = new THREE.Vector3();
+          right.crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
+          
+          // Bewegungsvektor
+          const movement = new THREE.Vector3();
+          movement.addScaledVector(direction, -inputY * this.data.speed * dt);
+          movement.addScaledVector(right, inputX * this.data.speed * dt);
+          
+          // Position aktualisieren
+          const position = this.el.getAttribute('position');
+          position.x += movement.x;
+          if (this.data.fly) position.y += movement.y;
+          position.z += movement.z;
+          this.el.setAttribute('position', position);
+        }
+        
+        // Drehung (Snap-Turn oder kontinuierlich)
+        if (turnX !== 0) {
+          const rotation = this.el.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
+          rotation.y -= turnX * this.data.turnSpeed * 60 * dt;
+          this.el.setAttribute('rotation', rotation);
+        }
+      }
+    });
+
+    // ===== VR CONTROLLER CLICK SUPPORT =====
+    AFRAME.registerComponent('vr-click-handler', {
+      init: function() {
+        const scene = this.el.sceneEl;
+        
+        // Trigger-Events für Controller
+        scene.addEventListener('triggerdown', (evt) => {
+          this.handleVRClick(evt.target);
+        });
+        
+        // Auch für selectstart (WebXR)
+        scene.addEventListener('selectstart', (evt) => {
+          this.handleVRClick(evt.target);
+        });
+      },
+      
+      handleVRClick: function(controller) {
+        if (!controller) return;
+        
+        const raycaster = controller.components.raycaster;
+        if (raycaster) {
+          const intersections = raycaster.intersections;
+          if (intersections && intersections.length > 0) {
+            const target = intersections[0].object.el;
+            if (target) {
+              target.emit('click');
+              console.log('VR Click auf:', target.id || target.className);
+            }
+          }
+        }
+      }
+    });
+
+    // Komponenten registrieren wenn Scene geladen
+    sceneEl = sceneEl || document.querySelector('a-scene');
+    
+    sceneEl.addEventListener('loaded', function() {
+      console.log('A-Frame Scene geladen');
+      
+      // VR Click Handler zur Scene hinzufügen
+      scene.setAttribute('vr-click-handler', '');
       
       // Portal 1
       const portal1 = document.getElementById('portal1');
@@ -1096,6 +1502,192 @@
         }
       }, 1000);
     });
+    
+    // ===== VR CONTROLLER MOVEMENT =====
+    AFRAME.registerComponent('thumbstick-controls', {
+      schema: {
+        speed: { type: 'number', default: 0.05 },
+        turnSpeed: { type: 'number', default: 2 }
+      },
+      
+      init: function() {
+        this.velocity = new THREE.Vector3();
+        this.direction = new THREE.Vector3();
+        this.rotation = new THREE.Euler();
+        
+        // Linker Controller: Bewegung
+        this.leftAxisX = 0;
+        this.leftAxisY = 0;
+        
+        // Rechter Controller: Drehung
+        this.rightAxisX = 0;
+        
+        // Event Listener für Controller
+        this.el.sceneEl.addEventListener('axismove', this.onAxisMove.bind(this));
+      },
+      
+      onAxisMove: function(evt) {
+        const hand = evt.target.getAttribute('oculus-touch-controls')?.hand ||
+                     evt.target.getAttribute('vive-controls')?.hand ||
+                     evt.target.getAttribute('windows-motion-controls')?.hand ||
+                     evt.target.id;
+        
+        if (hand === 'left' || hand === 'leftHand') {
+          // Linker Stick: Vorwärts/Rückwärts & Seitwärts
+          this.leftAxisX = evt.detail.axis[2] || evt.detail.axis[0] || 0;
+          this.leftAxisY = evt.detail.axis[3] || evt.detail.axis[1] || 0;
+        } else if (hand === 'right' || hand === 'rightHand') {
+          // Rechter Stick: Drehung
+          this.rightAxisX = evt.detail.axis[2] || evt.detail.axis[0] || 0;
+        }
+      },
+      
+      tick: function(time, delta) {
+        if (!delta) return;
+        
+        const rig = this.el;
+        const camera = document.getElementById('camera');
+        
+        // Deadzone für Thumbsticks
+        const deadzone = 0.15;
+        const leftX = Math.abs(this.leftAxisX) > deadzone ? this.leftAxisX : 0;
+        const leftY = Math.abs(this.leftAxisY) > deadzone ? this.leftAxisY : 0;
+        const rightX = Math.abs(this.rightAxisX) > deadzone ? this.rightAxisX : 0;
+        
+        // Bewegung basierend auf Kamera-Blickrichtung
+        if (leftX !== 0 || leftY !== 0) {
+          const cameraRotation = camera.getAttribute('rotation');
+          const angle = THREE.MathUtils.degToRad(cameraRotation.y);
+          
+          // Bewegungsrichtung berechnen
+          const moveX = -leftX * Math.cos(angle) - leftY * Math.sin(angle);
+          const moveZ = leftX * Math.sin(angle) - leftY * Math.cos(angle);
+          
+          // Position aktualisieren
+          const position = rig.getAttribute('position');
+          const speed = this.data.speed * (delta / 16.67); // Normalisiert auf 60fps
+          
+          position.x += moveX * speed;
+          position.z += moveZ * speed;
+          
+          rig.setAttribute('position', position);
+        }
+        
+        // Snap-Turn Drehung (rechter Stick)
+        if (rightX !== 0) {
+          const rotation = rig.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
+          rotation.y -= rightX * this.data.turnSpeed * (delta / 16.67);
+          rig.setAttribute('rotation', rotation);
+        }
+      }
+    });
+
+    // Alternative: Kontinuierliche Stick-Bewegung Komponente
+    AFRAME.registerComponent('vr-movement', {
+      schema: {
+        speed: { type: 'number', default: 3 },
+        fly: { type: 'boolean', default: false }
+      },
+      
+      init: function() {
+        this.thumbstickInput = { x: 0, y: 0 };
+        this.turnInput = 0;
+        
+        // Für beide Hände Events registrieren
+        const leftHand = document.getElementById('leftHand');
+        const rightHand = document.getElementById('rightHand');
+        
+        if (leftHand) {
+          leftHand.addEventListener('thumbstickmoved', this.onLeftThumbstick.bind(this));
+          leftHand.addEventListener('axismove', this.onLeftAxis.bind(this));
+        }
+        
+        if (rightHand) {
+          rightHand.addEventListener('thumbstickmoved', this.onRightThumbstick.bind(this));
+          rightHand.addEventListener('axismove', this.onRightAxis.bind(this));
+        }
+      },
+      
+      onLeftThumbstick: function(evt) {
+        this.thumbstickInput.x = evt.detail.x;
+        this.thumbstickInput.y = evt.detail.y;
+      },
+      
+      onLeftAxis: function(evt) {
+        if (evt.detail.axis) {
+          this.thumbstickInput.x = evt.detail.axis[2] || evt.detail.axis[0] || 0;
+          this.thumbstickInput.y = evt.detail.axis[3] || evt.detail.axis[1] || 0;
+        }
+      },
+      
+      onRightThumbstick: function(evt) {
+        this.turnInput = evt.detail.x;
+      },
+      
+      onRightAxis: function(evt) {
+        if (evt.detail.axis) {
+          this.turnInput = evt.detail.axis[2] || evt.detail.axis[0] || 0;
+        }
+      },
+      
+      tick: function(time, delta) {
+        if (!delta) return;
+        
+        const dt = delta / 1000; // Delta in Sekunden
+        const deadzone = 0.1;
+        
+        // Bewegung
+        const inputX = Math.abs(this.thumbstickInput.x) > deadzone ? this.thumbstickInput.x : 0;
+        const inputY = Math.abs(this.thumbstickInput.y) > deadzone ? this.thumbstickInput.y : 0;
+        
+        if (inputX !== 0 || inputY !== 0) {
+          const camera = document.getElementById('camera');
+          const cameraEl = camera.object3D;
+          
+          // Richtung aus Kamera-Rotation
+          const direction = new THREE.Vector3();
+          cameraEl.getWorldDirection(direction);
+          direction.y = this.data.fly ? direction.y : 0;
+          direction.normalize();
+          
+          // Seitwärts-Vektor
+          const right = new THREE.Vector3();
+          right.crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
+          
+          // Bewegungsvektor
+          const movement = new THREE.Vector3();
+          movement.addScaledVector(direction, -inputY * this.data.speed * dt);
+          movement.addScaledVector(right, inputX * this.data.speed * dt);
+          
+          // Position anwenden
+          const position = this.el.getAttribute('position');
+          position.x += movement.x;
+          if (this.data.fly) position.y += movement.y;
+          position.z += movement.z;
+          this.el.setAttribute('position', position);
+        }
+        
+        // Drehung
+        const turnX = Math.abs(this.turnInput) > deadzone ? this.turnInput : 0;
+        if (turnX !== 0) {
+          const rotation = this.el.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
+          rotation.y -= turnX * 60 * dt; // 60 Grad pro Sekunde
+          this.el.setAttribute('rotation', rotation);
+        }
+      }
+    });
+
+    // Komponente zum Rig hinzufügen wenn Scene geladen
+    sceneEl.addEventListener('loaded', function() {
+      const rig = document.getElementById('rig');
+      if (rig) {
+        rig.setAttribute('thumbstick-controls', 'speed: 0.06; turnSpeed: 2.5');
+        rig.setAttribute('vr-movement', 'speed: 3; fly: false');
+        console.log('VR Controller Movement aktiviert');
+      }
+    });
+
+    // ...existing code (initGame, etc.)...
   </script>
 </body>
 </html>
