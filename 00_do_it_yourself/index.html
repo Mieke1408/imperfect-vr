@@ -304,7 +304,6 @@
 
     <a-entity id="rig" position="0 0 4" movement-controls="speed: 0.15; fly: false; controls: gamepad, keyboard">
       <a-camera id="camera" position="0 1.6 0"
-                look-controls="pointerLockEnabled:false"
                 cursor="rayOrigin: mouse"
                 raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal">
         <a-entity cursor="fuse:false" geometry="primitive:ring;radiusInner:0.01;radiusOuter:0.02" material="color:#fff"></a-entity>
@@ -516,6 +515,7 @@
         playBlackNoise();
       } else if(chapter === 2){
         playRedSex();
+        showVoices();
       } else if(chapter === 3){
         playSchoenberg();
       } else if(chapter === 4){
@@ -527,6 +527,11 @@
         spawnLibraryBooks(60);
         spawnLibraryWords();
       }
+    }
+
+    function showVoices() {
+      const voicesContainer = document.getElementById('voices');
+      voicesContainer.style.display = 'block';
     }
 
     const libraryBooksContainerId='library-books-container';
