@@ -709,27 +709,16 @@
       }
     }
 
-    // Auto-Start beim Laden
-    document.addEventListener('DOMContentLoaded', function() {
-      const scene = document.querySelector('a-scene');
-      
-      // Warte auf den 'loaded' Event von A-Frame
-      scene.addEventListener('loaded', function() {
-        // Extra Verzögerung für vollständige Initialisierung
-        setTimeout(() => {
-          startGame();
-        }, 1000);
-      });
+    // Auto-Start beim Laden - SOFORT starten, ohne auf alles zu warten
+    window.addEventListener('load', function() {
+      startGame();
     });
 
     function startGame() {
       gameStarted = true;
       currentChapter = 1;
       
-      // Starte die Musik sofort
-      playChapterMusic(1);
-      
-      // Zeige Titel
+      // Zeige Titel SOFORT
       const titleEl = document.getElementById('chapter-title');
       const subtitleEl = document.getElementById('subtitle');
       
@@ -749,14 +738,46 @@
         if(subtitleEl) subtitleEl.classList.remove('visible');
       }, 4000);
       
-      // Spawn floating letters
+      // Musik & Content laden
+      playChapterMusic(1);
       spawnFloatingLettersAndWords();
       
-      // Aktiviere Portal nach 15s
+      // Portal nach 15s
       setTimeout(() => {
         portal1Active = true;
         activatePortal(1);
       }, 15000);
+    }
+
+    // Lazy-Load für andere Kapitel
+    function loadChapter(chapterNum) {
+      // Verstecke aktuelles Kapitel
+      for(let i=1; i<=6; i++) {
+        const ch = document.getElementById('chapter'+i);
+        if(ch) ch.setAttribute('visible', i === chapterNum);
+      }
+      
+      currentChapter = chapterNum;
+      playChapterMusic(chapterNum);
+      
+      // Zeige neuen Titel
+      const titleEl = document.getElementById('chapter-title');
+      const subtitleEl = document.getElementById('subtitle');
+      
+      if(titleEl) {
+        titleEl.textContent = titles[chapterNum-1][0];
+        titleEl.classList.add('visible');
+      }
+      
+      if(subtitleEl) {
+        subtitleEl.textContent = titles[chapterNum-1][1];
+        subtitleEl.classList.add('visible');
+      }
+      
+      setTimeout(() => {
+        if(titleEl) titleEl.classList.remove('visible');
+        if(subtitleEl) subtitleEl.classList.remove('visible');
+      }, 4000);
     }
   </script>
 </body>
