@@ -317,6 +317,7 @@
   </a-scene>
 
   <script>
+    // ZUERST: Controller-Component registrieren (VOR allen anderen Scripts)
     AFRAME.registerComponent('controller-movement', {
       schema: {
         speed: { type: 'number', default: 10 },
@@ -334,21 +335,18 @@
         const controllerWorldPos = new THREE.Vector3();
         controller.getWorldPosition(controllerWorldPos);
         
-        // Gamepad API für Stick-Input
         const gamepads = navigator.getGamepads?.() || [];
         let inputX = 0, inputZ = 0;
         
         for(const gp of gamepads) {
           if(!gp || gp.mapping !== 'xr-standard') continue;
           
-          // Linker Stick: axes[2] (X), axes[3] (Y)
           if(this.el.id === 'left-controller') {
             inputX = gp.axes[2] || 0;
             inputZ = gp.axes[3] || 0;
           }
         }
         
-        // Deadzone
         if(Math.abs(inputX) < 0.1) inputX = 0;
         if(Math.abs(inputZ) < 0.1) inputZ = 0;
         
@@ -370,7 +368,7 @@
             .addScaledVector(rightDir, inputX);
           
           const rigPos = this.rigEl.object3D.position;
-          const moveAmount = this.data.speed * (1 / 60); // Framerate-unabhängig
+          const moveAmount = this.data.speed * (1 / 60);
           rigPos.addScaledVector(this.moveDirection, moveAmount);
         }
       }
