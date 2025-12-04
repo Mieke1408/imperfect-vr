@@ -315,7 +315,9 @@
     </a-entity>
 
   </a-scene>
+  <!-- ⬆️ HIER endet A-Frame -->
 
+  <!-- ⬇️ HIER erst das Script -->
   <script>
     // Controller-Component registrieren
     AFRAME.registerComponent('controller-movement', {
@@ -789,7 +791,106 @@
         if(titleEl) titleEl.classList.remove('visible');
         if(subtitleEl) subtitleEl.classList.remove('visible');
       }, 4000);
+      
+      // ⬇️ WICHTIG: Progress-Dots und Portale updaten!
+      updateProgress(chapterNum);
+    }
+    
+    function updateProgress(chapter) {
+      const dots = document.querySelectorAll('.prog-dot');
+      dots.forEach((dot, i) => {
+        if(i < chapter - 1) {
+          dot.classList.add('complete');
+          dot.classList.remove('active');
+        } else if(i === chapter - 1) {
+          dot.classList.add('active');
+          dot.classList.remove('complete');
+        } else {
+          dot.classList.remove('active', 'complete');
+        }
+      });
+    }
+
+    // ⬇️ FEHLENDE EVENT-LISTENER FÜR KLICKS
+    document.addEventListener('click', function(evt) {
+      if(!gameStarted) return;
+      
+      const target = evt.target;
+      
+      // Portal 1 -> Kapitel 2
+      if(target.id === 'portal1' && portal1Active) {
+        loadChapter(2);
+      }
+      
+      // Portal 2 -> Kapitel 3
+      if(target.id === 'portal2') {
+        loadChapter(3);
+      }
+      
+      // Portal 3 -> Kapitel 4 (nur wenn Pfad gewählt)
+      if(target.id === 'portal3' && pathChosen) {
+        loadChapter(4);
+      }
+      
+      // Portal 4 -> Kapitel 5 (nur wenn KI genutzt)
+      if(target.id === 'portal4' && aiUsed) {
+        loadChapter(5);
+      }
+      
+      // Pfad-Wahl in Kapitel 3
+      if(target.classList.contains('path-choice')) {
+        pathChosen = true;
+        activatePortal(3);
+        document.getElementById('deadend-text').setAttribute('visible', 'true');
+        document.getElementById('deadend-text').setAttribute('value', 'Ein Weg öffnet sich...');
+      }
+      
+      // KI-Terminal in Kapitel 4
+      if(target.classList.contains('interact-ai') || target.id === 'ai-terminal') {
+        document.getElementById('ai-panel').style.display = 'block';
+      }
+      
+      // Final-Desk in Kapitel 5
+      if(target.classList.contains('interact-final') || target.id === 'final-desk') {
+        document.getElementById('final-panel').style.display = 'block';
+      }
+      
+      // Exit -> Kapitel 6
+      if(target.id === 'exit-door') {
+        loadChapter(6);
+      }
+    });
+
+    // ⬇️ FEHLENDE FUNKTIONEN FÜR UI-PANELS
+    function generateAI() {
+      const input = document.getElementById('ai-input').value.toLowerCase().trim();
+      const output = document.getElementById('ai-output');
+      const text = document.getElementById('ai-text');
+      
+      const result = aiTexts[input] || aiTexts['default'];
+      text.textContent = result;
+      output.style.display = 'block';
+      
+      aiUsed = true;
+      activatePortal(4);
+    }
+
+    function closeAI() {
+      document.getElementById('ai-panel').style.display = 'none';
+    }
+
+    function submitFinal() {
+      const input = document.getElementById('final-input').value.trim();
+      if(input.length < 5) {
+        alert('Schreib mindestens EINEN Satz...');
+        return;
+      }
+      
+      document.getElementById('final-panel').style.display = 'none';
+      document.getElementById('exit-text').setAttribute('value', '→ AUSGANG OFFEN');
+      document.getElementById('exit-text').setAttribute('color', '#2ecc71');
     }
   </script>
+
 </body>
 </html>
