@@ -180,21 +180,37 @@
         }, intervalMs);
       })();
 
-      // Sicherstellen, dass das Afd_wtf-Video zuverlässig im Loop startet
-      (function ensureAfdWtfLoop(){
-        const r = document.getElementById('Afd_wtf');
-        if (!r) return;
-        // Kein erzwungenes Autoplay mit Ton — Start erfolgt durch Nutzerinteraktion (click/keydown)
-        // Dennoch: bei 'ended' neu starten
-        r.addEventListener('ended', () => {
-          try { r.currentTime = 0; r.play().catch(()=>{}); } catch (e) {}
-        });
-        // Falls es unbeabsichtigt pausiert, versuchen neu zu starten (ohne Autoplay erzwingen)
-        r.addEventListener('pause', () => {
-          if (!r.ended) {
-            // versuchen, weiterzuspielen; wird ggf. blockiert bis Nutzer interagiert
-            r.play().catch(()=>{});
+      // Versuch: Afd_wtf automatisch mit Ton starten; falls geblockt, zeige Overlay zum Starten mit Ton
+      (function autoplayAfdWtfWithSound() {
+        const afd = document.getElementById('Afd_wtf');
+        const overlayEl = document.getElementById('playOverlay');
+        const playButton = document.getElementById('playBtn');
+        if (!afd) return;
+
+        // Ensure audio settings
+        afd.muted = false;
+        afd.volume = 1.0;
+
+        // Try to play immediately
+        afd.play().then(() => {
+          // started with sound successfully (browser allowed it)
+          if (overlayEl) overlayEl.style.display = 'none';
+        }).catch(() => {
+          // Autoplay with sound blocked by browser: show overlay; user must interact
+          if (overlayEl) overlayEl.style.display = 'flex';
+          if (playButton) {
+            playButton.onclick = () => {
+              afd.muted = false;
+              afd.volume = 1.0;
+              afd.play().catch(()=>{});
+              overlayEl.style.display = 'none';
+            };
           }
+        });
+
+        // keep looping robustly
+        afd.addEventListener('ended', () => {
+          try { afd.currentTime = 0; afd.play().catch(()=>{}); } catch (e) {}
         });
       })();
 
@@ -222,7 +238,6 @@
 
         function togglePlayback() {
           if (video.paused) {
-            // Nutzerinteraktion erlaubt Tonwiedergabe - entferne Muted falls gewünscht
             video.muted = false;
             video.volume = 1.0;
             video.play().catch(()=>{});
@@ -247,6 +262,53 @@
             togglePlayback();
           }
         });
+      })();
+
+      // Verstärkung für Afd_wtf per WebAudio (Gain = 3.0 => +200%)
+      (function amplifyAfdWtf(){
+        const vid = document.getElementById('Afd_wtf');
+        if (!vid) return;
+        let audioCtx = null;
+        let source = null;
+        let gainNode = null;
+        let connected = false;
+
+        function setupAudio() {
+          if (connected) return;
+          try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            source = audioCtx.createMediaElementSource(vid);
+            gainNode = audioCtx.createGain();
+            gainNode.gain.value = 3.0; // Faktor 3 = +200% Lautstärke
+            source.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            connected = true;
+          } catch (e) {
+            console.warn('Audio amplification not available:', e);
+          }
+        }
+
+        // Viele Browser verlangen User-Interaction, um AudioContext zu starten.
+        // Versuche beim ersten Play/Interaction das AudioContext zu erstellen/resumieren.
+        vid.addEventListener('play', () => {
+          setupAudio();
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(()=>{});
+          }
+        });
+
+        // Resume auch bei Benutzerinteraktionen (Overlay-Button, Klick, Tastendruck)
+        const resume = () => {
+          if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+        };
+        document.addEventListener('click', resume, {passive: true});
+        document.addEventListener('keydown', resume, {passive: true});
+
+        // Falls das Video bereits spielt (autoplay erfolgreich), sofort einrichten
+        if (!vid.paused) {
+          setupAudio();
+          if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+        }
       })();
       // ...existing code...
     </script>

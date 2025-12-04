@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Autor:innenschaft</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+  <!-- Tone.js entfernt -->
+  <style>
+    body{margin:0;overflow:hidden}
+    #ui{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:999;font-family:Georgia,serif;text-align:center}
+    #chapter-title{color:#fff;font-size:28px;opacity:0;transition:opacity 1s}
+    #chapter-title.visible{opacity:1}
+    #subtitle{color:#ccc;font-size:16px;font-style:italic;opacity:0;transition:opacity 1s 0.5s}
+    #subtitle.visible{opacity:1}
+    #hint{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);color:#888;font-size:14px;font-family:Arial}
+    #start-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:2000}
+    #start-screen h1{color:#fff;font-family:Georgia,serif;font-size:36px;margin-bottom:10px}
+    #start-screen p{color:#888;font-family:Georgia,serif;font-size:16px;margin-bottom:30px}
+    #start-screen button{background:#4ecdc4;border:none;color:#000;padding:15px 40px;font-size:18px;cursor:pointer;font-family:Georgia,serif}
+    #ai-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.95);padding:30px;border-radius:10px;display:none;z-index:1000;max-width:600px;width:90%;border:1px solid #4ecdc4}
+    #ai-panel h3{color:#4ecdc4;margin:0 0 15px 0;font-family:Georgia,serif}
+    #ai-panel textarea{width:100%;height:60px;background:#111;border:1px solid #333;color:#fff;padding:10px;font-family:Georgia,serif;font-size:14px;resize:none;box-sizing:border-box}
+    #ai-panel button{background:#4ecdc4;border:none;color:#000;padding:10px 25px;margin-top:10px;cursor:pointer;font-family:Georgia,serif;font-size:14px}
+    #ai-output{margin-top:20px;padding:15px;background:#1a1a1a;border-left:3px solid #e94560;color:#ccc;font-family:Georgia,serif;line-height:1.6;display:none;max-height:200px;overflow-y:auto}
+    #ai-label{color:#e94560;font-size:12px;margin-bottom:5px}
+    #final-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.95);padding:30px;border-radius:10px;display:none;z-index:1000;max-width:500px;width:90%;border:1px solid #f39c12;text-align:center}
+    #final-panel h3{color:#f39c12;margin:0 0 10px 0;font-family:Georgia,serif}
+    #final-panel p{color:#888;font-size:14px;margin-bottom:20px}
+    #final-panel textarea{width:100%;height:80px;background:#111;border:1px solid #333;color:#fff;padding:10px;font-family:Georgia,serif;font-size:16px;resize:none;box-sizing:border-box}
+    #final-panel button{background:#f39c12;border:none;color:#000;padding:12px 30px;margin-top:15px;cursor:pointer;font-family:Georgia,serif;font-size:16px}
+    #voices{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:500;display:none}
+    .voice{position:absolute;color:rgba(255,100,100,0.8);font-family:Georgia,serif;font-style:italic;animation:fadeVoice 4s ease-in-out infinite;text-shadow:0 0 10px rgba(255,0,0,0.5)}
+    @keyframes fadeVoice{0%,100%{opacity:0;transform:translateY(0)}50%{opacity:1;transform:translateY(-10px)}}
+    #progress{position:fixed;top:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:999}
+    .prog-dot{width:12px;height:12px;border-radius:50%;background:#333;transition:background 0.5s}
+    .prog-dot.active{background:#4ecdc4}
+    .prog-dot.complete{background:#2ecc71}
+    #portal-hint{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);color:#4ecdc4;font-size:16px;font-family:Georgia,serif;opacity:0;transition:opacity 0.5s}
+    #portal-hint.visible{opacity:1}
+  </style>
+</head>
+<body>
+  <div id="start-screen">
+    <h1>Autor:innenschaft</h1>
+    <p>Eine interaktive Erfahrung</p>
+    <button onclick="startExperience()">Erfahrung starten</button>
+    <p style="margin-top:20px;font-size:12px;color:#555">🎧 Kopfhörer empfohlen</p>
+  </div>
+
+  <div id="progress" style="display:none">
+    <div class="prog-dot active"></div>
+    <div class="prog-dot"></div>
+    <div class="prog-dot"></div>
+    <div class="prog-dot"></div>
+    <div class="prog-dot"></div>
+    <div class="prog-dot"></div>
+  </div>
+  <div id="ui">
+    <div id="chapter-title"></div>
+    <div id="subtitle"></div>
+  </div>
+  <div id="hint" style="display:none">WASD = Bewegen · Maus = Umsehen · Klicken = Interagieren</div>
+  <div id="portal-hint"></div>
+  <div id="voices"></div>
+  
+  <div id="ai-panel">
+    <h3>🤖 Die Maschine</h3>
+    <p style="color:#888;font-size:14px;margin-bottom:15px">Gib ein Thema ein. Die KI schreibt sofort.</p>
+    <textarea id="ai-input" placeholder="z.B. 'Einsamkeit', 'Liebe', 'Vergänglichkeit', 'Angst', 'Hoffnung', 'Schmerz', 'Schönheit', 'Tod', 'Freiheit', 'Einheit', 'Stille', 'Zeit', 'Verlust', 'Identität', 'Vertrauen', 'Erinnerung', 'Kreativität', 'Einfluss', 'Demut', 'Ekstase', 'Wahrheit', 'Schreiben', 'Scheitern', 'Schlaf', 'Rauschen', 'Farbe', 'Leere', 'Echo', 'Wasser', 'Feuer', 'Stimme', 'Raum', 'Dunkelheit', 'Grenze', 'Bewegung', 'Sprache'"></textarea>
+    <button onclick="generateAI()">Generieren</button>
+    <div id="ai-output"><div id="ai-label">KI-GENERIERT:</div><div id="ai-text"></div></div>
+    <button onclick="closeAI()" style="background:#333;color:#fff;margin-left:10px">Weiter</button>
+  </div>
+  
+  <div id="final-panel">
+    <h3>✍️ Dein Satz</h3>
+    <p>Trotz allem – schreibe EINEN Satz. Deinen eigenen.<br>Die Stimmen, die Maschine, die Leere – sie warten.<br>Aber nur du kannst diesen Raum verlassen.</p>
+    <textarea id="final-input" placeholder="Dein Satz..."></textarea>
+    <button onclick="submitFinal()">Vollenden</button>
+  </div>
+
+  <!-- Szenen unverändert -->
+  <!-- (A-Frame Kapitel bleiben wie im Original; aus Platzgründen nicht erneut kommentiert) -->
+  <!-- BEGINN SZENE -->
+  <a-scene>
+    <!-- Kapitel 1 -->
+    <a-entity id="chapter1" visible="true">
+      <a-sky color="#f5f5f5"></a-sky>
+      <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#fafafa"></a-plane>
+      <a-light type="ambient" color="#fff" intensity="0.9"></a-light>
+      <a-text value="A" position="-2 2 -4" color="#ddd" scale="3 3 3" class="fading-letter" animation="property:position;to:-2 2.3 -4;dir:alternate;loop:true;dur:2000"></a-text>
+      <a-text value="U" position="0 2.5 -5" color="#ddd" scale="3 3 3" class="fading-letter" animation="property:position;to:0 2.8 -5;dir:alternate;loop:true;dur:2500"></a-text>
+      <a-text value="T" position="2 1.8 -4" color="#ddd" scale="3 3 3" class="fading-letter" animation="property:position;to:2 2.1 -4;dir:alternate;loop:true;dur:1800"></a-text>
+      <a-text value="O" position="-1 3 -6" color="#ddd" scale="3 3 3" class="fading-letter" animation="property:position;to:-1 3.3 -6;dir:alternate;loop:true;dur:2200"></a-text>
+      <a-text value="R" position="1.5 2.2 -5" color="#ddd" scale="3 3 3" class="fading-letter" animation="property:position;to:1.5 2.5 -5;dir:alternate;loop:true;dur:1900"></a-text>
+      <a-box position="0 0.4 -3" width="1.5" height="0.8" depth="0.8" color="#8B4513"></a-box>
+      <a-plane position="0 0.81 -3" rotation="-90 0 0" width="1" height="0.6" color="#fff"></a-plane>
+      <a-text value="..." position="0 0.82 -3" rotation="-90 0 0" color="#ccc" scale="0.5 0.5 0.5" align="center"></a-text>
+      <a-box id="portal1" class="portal" position="0 1.5 -12" width="3" height="3" depth="0.5" color="#333"></a-box>
+      <a-text id="portal1-text" value="Warte..." position="0 1.5 -11.7" color="#666" align="center"></a-text>
+    </a-entity>
+
+    <!-- Kapitel 2 -->
+    <a-entity id="chapter2" visible="false">
+      <a-sky color="#1a0a0a"></a-sky>
+      <a-plane position="0 0 0" rotation="-90 0 0" width="8" height="80" color="#0d0d0d"></a-plane>
+      <a-light type="ambient" color="#220000" intensity="0.3"></a-light>
+      <a-plane position="0 4.5 -20" rotation="90 0 0" width="8" height="80" color="#000000"></a-plane>
+      <a-light type="point" position="0 2 -20" color="#ff0000" intensity="0.3" animation="property:intensity;from:0.05;to:1.2;dur:120;dir:alternate;loop:true;easing:linear"></a-light>
+      <a-light type="point" position="-2 2.5 -10" color="#ff0000" intensity="0.2" animation="property:intensity;from:0.02;to:1.0;dur:90;dir:alternate;loop:true;easing:linear;delay:40"></a-light>
+      <a-light type="point" position="2 2.5 -30" color="#ff0000" intensity="0.25" animation="property:intensity;from:0.03;to:1.1;dur:100;dir:alternate;loop:true;easing:linear;delay:60"></a-light>
+      <a-light type="point" position="0 3 -40" color="#ff0000" intensity="0.2" animation="property:intensity;from:0.05;to:0.95;dur:110;dir:alternate;loop:true;easing:linear;delay:80"></a-light>
+      <a-box position="-3 2 -20" width="0.3" height="5" depth="50" color="#1a0505"></a-box>
+      <a-box position="3 2 -20" width="0.3" height="5" depth="50" color="#1a0505"></a-box>
+      <a-text value="Das ist nicht gut genug." position="-2.7 2 -8" rotation="0 90 0" color="#550000" scale="0.7 0.7 0.7"></a-text>
+      <a-text value="Wer will das lesen?" position="2.7 1.5 -14" rotation="0 -90 0" color="#550000" scale="0.7 0.7 0.7"></a-text>
+      <a-text value="Das wurde schon geschrieben." position="-2.7 2.5 -20" rotation="0 90 0" color="#550000" scale="0.6 0.6 0.6"></a-text>
+      <a-text value="Du bist kein:e echte:r Autor:in." position="2.7 2 -26" rotation="0 -90 0" color="#550000" scale="0.7 0.7 0.7"></a-text>
+      <a-text value="Gib auf." position="-2.7 1.8 -32" rotation="0 90 0" color="#660000" scale="0.9 0.9 0.9"></a-text>
+      <a-text value="Die anderen sind besser." position="2.7 2.3 -38" rotation="0 -90 0" color="#550000" scale="0.6 0.6 0.6"></a-text>
+      <a-box id="portal2" class="portal" position="0 1.5 -45" width="3" height="3" depth="0.5" color="#2ecc71" material="emissive:#2ecc71;emissiveIntensity:0.3"></a-box>
+      <a-text value="→ Weiter" position="0 1.5 -44.7" color="#fff" align="center"></a-text>
+    </a-entity>
+
+    <!-- Kapitel 3 -->
+    <a-entity id="chapter3" visible="false">
+      <a-sky color="#0a0a0a"></a-sky>
+      <a-plane position="0 0 0" rotation="-90 0 0" width="40" height="60" color="#0d0d15"></a-plane>
+      <a-light type="ambient" color="#112" intensity="0.4"></a-light>
+      <a-light type="point" position="0 3 -15" color="#9b59b6" intensity="0.4"></a-light>
+      <a-plane position="0 0.01 -3" rotation="-90 0 0" width="0.3" height="6" color="#2ecc71" material="emissive:#2ecc71;emissiveIntensity:0.5"></a-plane>
+      <a-box position="-6 1.5 -15" width="0.2" height="3" depth="30" color="#f5f5dc" material="opacity:0.8"></a-box>
+      <a-box position="6 1.5 -15" width="0.2" height="3" depth="30" color="#f5f5dc" material="opacity:0.8"></a-box>
+      <a-text value="Waehle deinen Anfang" position="0 3 -6" color="#9b59b6" align="center" scale="0.8 0.8 0.8"></a-text>
+      <a-box id="path-left" position="-3 0.6 -10" width="2.5" height="1.2" depth="2.5" color="#3498db" class="path-choice"></a-box>
+      <a-text value="'Es war einmal...'" position="-3 1.5 -10" color="#fff" align="center" scale="0.4 0.4 0.4"></a-text>
+      <a-box id="path-middle" position="0 0.6 -10" width="2.5" height="1.2" depth="2.5" color="#9b59b6" class="path-choice"></a-box>
+      <a-text value="'Ich erinnere mich...'" position="0 1.5 -10" color="#fff" align="center" scale="0.4 0.4 0.4"></a-text>
+      <a-box id="path-right" position="3 0.6 -10" width="2.5" height="1.2" depth="2.5" color="#e67e22" class="path-choice"></a-box>
+      <a-text value="'Niemand wusste...'" position="3 1.5 -10" color="#fff" align="center" scale="0.4 0.4 0.4"></a-text>
+      <a-text id="deadend-text" value="" position="0 2.5 -18" color="#e74c3c" align="center" visible="false" scale="0.7 0.7 0.7"></a-text>
+      <a-box id="portal3" class="portal" position="0 1.5 -25" width="3" height="3" depth="0.5" color="#333"></a-box>
+      <a-text id="portal3-text" value="Waehle zuerst..." position="0 1.5 -24.7" color="#666" align="center" scale="0.6 0.6 0.6"></a-text>
+    </a-entity>
+
+    <!-- Kapitel 4 -->
+    <a-entity id="chapter4" visible="false">
+      <a-sky color="#050510"></a-sky>
+      <a-plane position="0 0 0" rotation="-90 0 0" width="30" height="40" color="#080815"></a-plane>
+      <!-- Neon Ambient -->
+      <a-light type="ambient" color="#222244" intensity="0.35"></a-light>
+
+      <!-- Synth Puls Lights -->
+      <a-light type="point" position="0 3 -10" color="#ff00ff" intensity="0.6"
+               animation__c="property:color;dir:alternate;loop:true;dur:1400;from:#ff00ff;to:#00ffff"
+               animation__i="property:intensity;dir:alternate;loop:true;dur:900;from:0.3;to:1.1"></a-light>
+
+      <a-light type="point" position="-4 2.5 -11" color="#00ffff" intensity="0.7"
+               animation__c="property:color;dir:alternate;loop:true;dur:1600;from:#00ffff;to:#ffff00"
+               animation__i="property:intensity;dir:alternate;loop:true;dur:1200;from:0.4;to:1.0"></a-light>
+
+      <a-light type="point" position="4 2.5 -9" color="#ffff00" intensity="0.7"
+               animation__c="property:color;dir:alternate;loop:true;dur:1800;from:#ffff00;to:#ff0066"
+               animation__i="property:intensity;dir:alternate;loop:true;dur:1000;from:0.4;to:1.15"></a-light>
+
+      <a-light type="point" position="0 1.2 -6" color="#ff0066" intensity="0.5"
+               animation__c="property:color;dir:alternate;loop:true;dur:1500;from:#ff0066;to:#00ff99"
+               animation__i="property:intensity;dir:alternate;loop:true;dur:800;from:0.25;to:0.9"></a-light>
+
+      <!-- Rotierender Light Ring für 80er Flair -->
+      <a-entity position="0 2.8 -10" rotation="0 0 0" animation="property:rotation;to:0 360 0;loop:true;dur:6000;easing:linear">
+        <a-light type="spot" position="0 0 3" angle="25" color="#00ffff" intensity="0.9"
+                 animation__c="property:color;dir:alternate;loop:true;dur:1700;from:#00ffff;to:#ff00ff"
+                 animation__i="property:intensity;dir:alternate;loop:true;dur:1300;from:0.4;to:1.2"></a-light>
+        <a-light type="spot" position="3 0 0" angle="25" color="#ff00ff" intensity="0.9"
+                 animation__c="property:color;dir:alternate;loop:true;dur:1700;from:#ff00ff;to:#ffff00"
+                 animation__i="property:intensity;dir:alternate;loop:true;dur:1100;from:0.5;to:1.3"></a-light>
+        <a-light type="spot" position="-3 0 0" angle="25" color="#ffff00" intensity="0.9"
+                 animation__c="property:color;dir:alternate;loop:true;dur:1700;from:#ffff00;to:#00ff99"
+                 animation__i="property:intensity;dir:alternate;loop:true;dur:1000;from:0.5;to:1.25"></a-light>
+        <a-light type="spot" position="0 0 -3" angle="25" color="#00ff99" intensity="0.9"
+                 animation__c="property:color;dir:alternate;loop:true;dur:1700;from:#00ff99;to:#ff0066"
+                 animation__i="property:intensity;dir:alternate;loop:true;dur:1200;from:0.5;to:1.25"></a-light>
+      </a-entity>
+
+      <a-cylinder position="0 1.5 -10" radius="2.5" height="3" color="#111" material="metalness:0.8"></a-cylinder>
+
+      <!-- Bestehende Torus behalten, Farben leicht neon -->
+      <a-torus position="0 3.5 -10" radius="3" radius-tubular="0.1" color="#00ffff"
+               material="emissive:#00ffff;emissiveIntensity:0.7"
+               animation="property:rotation;to:0 360 0;loop:true;dur:3000;easing:linear"></a-torus>
+
+      <a-torus position="0 3.5 -10" radius="2.2" radius-tubular="0.05" color="#ff00ff"
+               material="emissive:#ff00ff;emissiveIntensity:0.7"
+               animation="property:rotation;to:0 -360 0;loop:true;dur:2000;easing:linear"></a-torus>
+
+      <a-entity position="0 0.01 -5">
+        <a-plane position="0 0 0" rotation="-90 0 0" width="0.2" height="1.5" color="#00ffff" material="emissive:#00ffff;emissiveIntensity:0.8"></a-plane>
+        <a-plane position="0 0 0" rotation="-90 0 0" width="1.5" height="0.2" color="#ff00ff" material="emissive:#ff00ff;emissiveIntensity:0.8"></a-plane>
+      </a-entity>
+
+      <a-box id="ai-terminal" position="0 1.2 -6" width="1.8" height="1.2" depth="0.4" color="#222"
+             class="interact-ai"
+             material="color:#222;emissive:#ff00ff;emissiveIntensity:0.4"></a-box>
+      <a-text value="[ AKTIVIEREN ]" position="0 1.2 -5.79" color="#00ffff" align="center" scale="0.35 0.35 0.35"></a-text>
+
+      <a-text value="EFFIZIENZ" position="-5 3 -12" color="#00ffff" scale="0.5 0.5 0.5" opacity="0.5"
+              animation="property:color;dir:alternate;loop:true;dur:1600;from:#00ffff;to:#ff00ff"></a-text>
+      <a-text value="PERFEKTION" position="5 2.5 -11" color="#ff00ff" scale="0.5 0.5 0.5" opacity="0.5"
+              animation="property:color;dir:alternate;loop:true;dur:1800;from:#ff00ff;to:#ffff00"></a-text>
+      <a-text value="SCHNELLER" position="4 3.8 -13" color="#ffff00" scale="0.5 0.5 0.5" opacity="0.5"
+              animation="property:color;dir:alternate;loop:true;dur:1500;from:#ffff00;to:#00ff99"></a-text>
+
+      <a-box position="6 0.4 -10" width="1" height="0.8" depth="0.6" color="#8B4513"></a-box>
+      <a-plane position="6 0.81 -10" rotation="-90 0 0" width="0.6" height="0.4" color="#fff"></a-plane>
+      <a-text value="Dein Platz" position="6 1.6 -10" color="#666" align="center" scale="0.35 0.35 0.35"></a-text>
+
+      <a-box id="portal4" class="portal" position="0 1.5 -18" width="3" height="3" depth="0.5" color="#333"></a-box>
+      <a-text id="portal4-text" value="Warte..." position="0 1.5 -17.7" color="#666" align="center"></a-text>
+    </a-entity>
+
+    <!-- Kapitel 5 -->
+    <a-entity id="chapter5" visible="false">
+      <a-sky id="sky5" src="horror2.jpg"></a-sky>
+      
+      <!-- Lichtstimmung ähnlich Raum 2 (angepasst) -->
+      <a-light type="ambient" color="#220000" intensity="0.25"></a-light>
+      <a-light type="point" position="0 2 -8" color="#aa3333" intensity="0.3" animation="property:intensity;from:0.05;to:0.8;dur:150;dir:alternate;loop:true;easing:linear"></a-light>
+      <a-light type="point" position="-4 2.5 -6" color="#cc4444" intensity="0.25" animation="property:intensity;from:0.03;to:0.7;dur:120;dir:alternate;loop:true;easing:linear;delay:30"></a-light>
+      <a-light type="point" position="4 2.5 -10" color="#993333" intensity="0.3" animation="property:intensity;from:0.04;to:0.75;dur:140;dir:alternate;loop:true;easing:linear;delay:50"></a-light>
+      <a-light type="point" position="0 3.5 -12" color="#bb2222" intensity="0.25" animation="property:intensity;from:0.05;to:0.7;dur:130;dir:alternate;loop:true;easing:linear;delay:70"></a-light>
+      
+      <!-- Neon-Reifen (Torus) im Stil von Raum 4 -->
+      <a-torus position="-3 3.5 -9" radius="1.2" radius-tubular="0.08" color="#00ffff"
+               material="emissive:#00ffff;emissiveIntensity:0.8"
+               animation="property:rotation;to:360 0 0;loop:true;dur:2500;easing:linear"></a-torus>
+      
+      <a-torus position="4 2.8 -11" radius="0.9" radius-tubular="0.06" color="#ff00ff"
+               material="emissive:#ff00ff;emissiveIntensity:0.8"
+               animation="property:rotation;to:0 360 0;loop:true;dur:3000;easing:linear"></a-torus>
+      
+      <a-torus position="0 4 -7" radius="1.5" radius-tubular="0.1" color="#ffff00"
+               material="emissive:#ffff00;emissiveIntensity:0.7"
+               animation="property:rotation;to:0 0 360;loop:true;dur:2800;easing:linear"></a-torus>
+      
+      <a-torus position="-5 2.2 -12" radius="1.0" radius-tubular="0.07" color="#ff0066"
+               material="emissive:#ff0066;emissiveIntensity:0.8"
+               animation="property:rotation;to:180 360 180;loop:true;dur:3200;easing:linear"></a-torus>
+      
+      <a-torus position="2.5 3.2 -6" radius="0.8" radius-tubular="0.05" color="#00ff99"
+               material="emissive:#00ff99;emissiveIntensity:0.9"
+               animation="property:rotation;to:360 180 0;loop:true;dur:2600;easing:linear"></a-torus>
+      
+      <a-torus position="-1.5 4.5 -13" radius="1.1" radius-tubular="0.08" color="#ff6600"
+               material="emissive:#ff6600;emissiveIntensity:0.75"
+               animation="property:rotation;to:0 360 360;loop:true;dur:3500;easing:linear"></a-torus>
+  
+      <!-- Schwebende leere weiße Seiten -->
+      <a-plane position="-5 2.5 -7" width="0.6" height="0.8" color="#ffffff" opacity="0.9" rotation="20 45 10" animation="property:position;to:-5 3.2 -7;dir:alternate;loop:true;dur:3200;easing:easeInOutSine" animation__rot="property:rotation;to:30 60 -5;dir:alternate;loop:true;dur:4000;easing:easeInOutSine"></a-plane>
+      <a-plane position="4 3.5 -9" width="0.5" height="0.7" color="#ffffff" opacity="0.85" rotation="-15 -30 20" animation="property:position;to:4 4.1 -9;dir:alternate;loop:true;dur:2800;easing:easeInOutSine" animation__rot="property:rotation;to:-25 -45 10;dir:alternate;loop:true;dur:3500;easing:easeInOutSine"></a-plane>
+      <a-plane position="-2 4 -11" width="0.7" height="0.9" color="#ffffff" opacity="0.9" rotation="35 20 -15" animation="property:position;to:-2 4.6 -11;dir:alternate;loop:true;dur:3000;easing:easeInOutSine" animation__rot="property:rotation;to:45 35 -25;dir:alternate;loop:true;dur:3800;easing:easeInOutSine"></a-plane>
+      <a-plane position="3 2 -6" width="0.55" height="0.75" color="#ffffff" opacity="0.88" rotation="-20 60 25" animation="property:position;to:3 2.7 -6;dir:alternate;loop:true;dur:2600;easing:easeInOutSine" animation__rot="property:rotation;to:-30 75 15;dir:alternate;loop:true;dur:3200;easing:easeInOutSine"></a-plane>
+      <a-plane position="0 3.2 -5" width="0.65" height="0.85" color="#ffffff" opacity="0.92" rotation="10 -15 30" animation="property:position;to:0 3.8 -5;dir:alternate;loop:true;dur:2900;easing:easeInOutSine" animation__rot="property:rotation;to:20 -25 40;dir:alternate;loop:true;dur:3600;easing:easeInOutSine"></a-plane>
+      <a-plane position="-3.5 2.8 -10" width="0.6" height="0.8" color="#ffffff" opacity="0.87" rotation="25 40 -20" animation="property:position;to:-3.5 3.4 -10;dir:alternate;loop:true;dur:3100;easing:easeInOutSine" animation__rot="property:rotation;to:35 55 -30;dir:alternate;loop:true;dur:3700;easing:easeInOutSine"></a-plane>
+      <a-plane position="5 2.2 -12" width="0.55" height="0.75" color="#ffffff" opacity="0.9" rotation="-30 -50 15" animation="property:position;to:5 2.9 -12;dir:alternate;loop:true;dur:2700;easing:easeInOutSine" animation__rot="property:rotation;to:-40 -65 5;dir:alternate;loop:true;dur:3400;easing:easeInOutSine"></a-plane>
+      <a-plane position="-1 3.6 -8" width="0.6" height="0.8" color="#ffffff" opacity="0.91" rotation="15 25 -10" animation="property:position;to:-1 4.2 -8;dir:alternate;loop:true;dur:2850;easing:easeInOutSine" animation__rot="property:rotation;to:25 40 -20;dir:alternate;loop:true;dur:3550;easing:easeInOutSine"></a-plane>
+      <a-plane position="2 4.2 -13" width="0.65" height="0.85" color="#ffffff" opacity="0.88" rotation="-25 35 20" animation="property:position;to:2 4.8 -13;dir:alternate;loop:true;dur:3050;easing:easeInOutSine" animation__rot="property:rotation;to:-35 50 30;dir:alternate;loop:true;dur:3750;easing:easeInOutSine"></a-plane>
+      <a-plane position="-4.5 3.8 -14" width="0.6" height="0.8" color="#ffffff" opacity="0.9" rotation="30 -20 -25" animation="property:position;to:-4.5 4.4 -14;dir:alternate;loop:true;dur:2950;easing:easeInOutSine" animation__rot="property:rotation;to:40 -35 -35;dir:alternate;loop:true;dur:3650;easing:easeInOutSine"></a-plane>
+      <a-plane position="1.5 1.8 -7" width="0.55" height="0.75" color="#ffffff" opacity="0.86" rotation="20 50 15" animation="property:position;to:1.5 2.5 -7;dir:alternate;loop:true;dur:2750;easing:easeInOutSine" animation__rot="property:rotation;to:30 65 25;dir:alternate;loop:true;dur:3450;easing:easeInOutSine"></a-plane>
+      <a-plane position="-6 3 -9" width="0.7" height="0.9" color="#ffffff" opacity="0.89" rotation="-10 -40 30" animation="property:position;to:-6 3.6 -9;dir:alternate;loop:true;dur:3150;easing:easeInOutSine" animation__rot="property:rotation;to:-20 -55 40;dir:alternate;loop:true;dur:3850;easing:easeInOutSine"></a-plane>
+      
+      <!-- Schwebende Fragen -->
+      <a-text value="Wofür entscheidest du dich?" position="-3 3 -5" color="#aa5555" scale="0.6 0.6 0.6" opacity="0.7" align="center" animation="property:position;to:-3 3.4 -5;dir:alternate;loop:true;dur:2200;easing:easeInOutSine"></a-text>
+      <a-text value="Bist du dir sicher?" position="3 2.5 -7" color="#bb4444" scale="0.6 0.6 0.6" opacity="0.7" align="center" animation="property:position;to:3 2.9 -7;dir:alternate;loop:true;dur:2500;easing:easeInOutSine"></a-text>
+      <a-text value="Was ist deine Stimme?" position="-2 3.5 -9" color="#993333" scale="0.5 0.5 0.5" opacity="0.6" align="center" animation="property:position;to:-2 3.9 -9;dir:alternate;loop:true;dur:2800;easing:easeInOutSine"></a-text>
+      <a-text value="Maschine oder Mensch?" position="2.5 3.2 -11" color="#cc5555" scale="0.55 0.55 0.55" opacity="0.65" align="center" animation="property:position;to:2.5 3.6 -11;dir:alternate;loop:true;dur:2400;easing:easeInOutSine"></a-text>
+      <a-text value="Wer schreibt wirklich?" position="-4 2.8 -8" color="#aa4444" scale="0.5 0.5 0.5" opacity="0.6" align="center" animation="property:position;to:-4 3.2 -8;dir:alternate;loop:true;dur:2600;easing:easeInOutSine"></a-text>
+      <a-text value="Kannst du noch wählen?" position="4 3.8 -6" color="#994444" scale="0.55 0.55 0.55" opacity="0.65" align="center" animation="property:position;to:4 4.2 -6;dir:alternate;loop:true;dur:2300;easing:easeInOutSine"></a-text>
+      <a-text value="Was bleibt von dir?" position="0 4 -10" color="#bb3333" scale="0.6 0.6 0.6" opacity="0.7" align="center" animation="property:position;to:0 4.4 -10;dir:alternate;loop:true;dur:2700;easing:easeInOutSine"></a-text>
+      
+      <!-- Bestehende Elemente -->
+      <a-torus position="-4 2 -8" radius="0.7" radius-tubular="0.04" color="#4ecdc4" opacity="0.35" animation="property:rotation;to:0 360 0;loop:true;dur:4000"></a-torus>
+      <a-torus position="4 2.5 -7" radius="0.5" radius-tubular="0.04" color="#e94560" opacity="0.35" animation="property:rotation;to:0 -360 0;loop:true;dur:3000"></a-torus>
+      <a-text value="?" position="-2 4 -9" color="#555" scale="1.5 1.5 1.5" animation="property:position;to:-2 4.3 -9;dir:alternate;loop:true;dur:2500"></a-text>
+      <a-text value="?" position="2.5 3.5 -8" color="#555" scale="1.5 1.5 1.5" animation="property:position;to:2.5 3.8 -8;dir:alternate;loop:true;dur:2200"></a-text>
+      <a-cylinder position="0 0.3 -8" radius="1.8" height="0.6" color="#000000" material="metalness:0.4"></a-cylinder>
+      <a-box id="final-desk" position="0 0.85 -8" width="1.2" height="0.5" depth="0.7" color="#8b4513" class="interact-final"></a-box>
+      <a-text value="SCHREIB" position="0 1.6 -8" color="#f39c12" align="center" scale="0.5 0.5 0.5" animation="property:scale;to:0.55 0.55 0.55;dir:alternate;loop:true;dur:1000"></a-text>
+      <a-box id="exit-door" class="portal" position="0 2 -15" width="3" height="4" depth="0.3" color="#444"></a-box>
+      <a-text id="exit-text" value="AUSGANG" position="0 2 -14.8" color="#777" align="center"></a-text>
+    </a-entity>
+
+    <!-- Kapitel 6 -->
+    <a-entity id="chapter6" visible="false">
+      <a-sky color="#f6e7c7"></a-sky>
+      <a-light type="ambient" color="#ffecd2" intensity="0.7"></a-light>
+      <a-light type="point" position="-8 3 -8" color="#ffd89b" intensity="1" distance="15"></a-light>
+      <a-light type="point" position="8 3 -8" color="#ffd89b" intensity="1" distance="15"></a-light>
+      <a-light type="point" position="0 3 0" color="#ffe4b5" intensity="0.8" distance="12"></a-light>
+    </a-entity>
+
+    <a-entity id="rig" position="0 0 4">
+      <a-camera id="camera" position="0 1.6 0"
+                look-controls="pointerLockEnabled:true"
+                wasd-controls="acceleration:40"
+                cursor="rayOrigin: mouse"
+                raycaster="objects: .interact-ai, .interact-final, .path-choice, .portal">
+        <a-entity cursor="fuse:false" geometry="primitive:ring;radiusInner:0.01;radiusOuter:0.02" material="color:#fff"></a-entity>
+      </a-camera>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    let currentChapter = 1;
+    let portal1Active = false;
+    let pathChosen = false;
+    let aiUsed = false;
+    let gameStarted = false;
+    // Tone.js Variablen entfernt
+
+    const titles = [
+      ['Kapitel 1: Die Leere','Wo Saetze noch nicht existieren'],
+      ['Kapitel 2: Die Stimmen','Die Kritiker:innen erwachen'],
+      ['Kapitel 3: Die Qual der Wahl','Jede Entscheidung formt die Geschichte. Und schliesst andere aus.'],
+      ['Kapitel 4: Die Maschine','Schneller. Besser? Aber wessen Worte?'],
+      ['Kapitel 5: Die Synthese','Trotz allem – Schreiben'],
+      ['Kapitel 6: Die Bibliothek','Wärme, Staub und Geschichten']
+    ];
+    
+    const voices = ["Das ist nicht gut genug.","Wer will das lesen?","Gib auf.","Die KI macht es besser.","Du bist zu langsam.","Das hat keinen Wert.","Warum versuchst du es noch?","Niemand wartet auf deine Worte."];
+    
+    const aiTexts = {
+      'einsamkeit': "Die Einsamkeit ist ein stiller Raum, in dem die Gedanken widerhallen wie Schritte in einer leeren Kathedrale. Sie ist nicht die Abwesenheit von Menschen, sondern die Anwesenheit des ungefilterten Selbst – roh, ungeschönt, wartend.",
+      'liebe': "Liebe ist der Mut, sich einem anderen Menschen zu zeigen, bevor man sich selbst vollständig kennt. Sie ist das Wagnis, verletzt zu werden, und die Hoffnung, dass dieses Wagnis belohnt wird.",
+      'vergänglichkeit': "Alles vergeht. Die Blüte welkt, der Stein verwittert, selbst Sterne erlöschen. Und doch liegt in dieser Vergänglichkeit eine seltsame Schönheit – sie macht jeden Moment kostbar.",
+      'angst': "Angst ist der Schatten, der wächst, je mehr wir vor ihm fliehen. Sie flüstert von Gefahren, die vielleicht nie eintreten, und lähmt uns mit Bildern dessen, was sein könnte.",
+      'hoffnung': "Hoffnung ist ein Licht, das brennt, auch wenn alle Logik dagegen spricht. Sie ist der Samen, der durch Beton bricht. Irrational, unvernünftig – und doch das Menschlichste.",
+      'schmerz': "Schmerz ist die Sprache, die der Körper spricht, wenn Worte versagen. Er ist Wahrheit ohne Filter, Authentizität ohne Maske. In ihm offenbaren wir uns selbst.",
+      'schönheit': "Schönheit ist nicht das Gegenteil von Hässlichkeit. Sie ist die Fähigkeit, in der Bruchstelle des Schmerzes einen Riss zu sehen, durch den Licht fällt.",
+      'tod': "Der Tod ist der einzige universelle Editor. Er streicht alles weg, was nicht wesentlich ist. Vielleicht lehrt er uns, was es bedeutet, wirklich zu leben.",
+      'freiheit': "Freiheit ist nicht die Abwesenheit von Grenzen, sondern die Fähigkeit, innerhalb von Grenzen Entscheidungen zu treffen, die uns gehören. Sie ist das Gewicht der Verantwortung.",
+      'einheit': "In der Einheit verlieren wir uns. In der Zersplitterung finden wir uns. Vielleicht ist die Wahrheit dazwischen – im Bruch, im Echo, im Zwischenraum.",
+      'stille': "Stille ist nicht das Fehlen von Lärm. Sie ist das Gegenteil von Lautstärke – eine Präsenz, die zuhört. In ihr werden wir zu uns selbst.",
+      'zeit': "Zeit ist ein Erzähler, der nur rückwärts spricht. Die Zukunft erfinden wir aus Hoffnung, die Vergangenheit aus Erinnerung. Die Gegenwart ist der dünnste Moment zwischen beiden.",
+      'verlust': "Verlust ist das Gegenteil von Besitz – nicht weil wir etwas nicht mehr haben, sondern weil wir nun wissen, was es bedeutete, es zu haben. Verlust lehrt uns Gewicht.",
+      'identität': "Wer bin ich, wenn nicht die Summe meiner Widersprüche? Ich bin das, was ich sage, und das, was ich nicht sagen kann. Ich bin das Scheitern, eine andere Person zu sein.",
+      'vertrauen': "Vertrauen ist das Risiko, nicht beschützt zu werden. Es ist die Entscheidung, verletzlich zu sein, obwohl verletzlich Schmerz bedeutet.",
+      'erinnerung': "Erinnerung ist kein Archiv der Wahrheit. Sie ist eine Geschichte, die wir uns selbst erzählen, um Sinn in das Chaos zu bringen. Jedes Mal, wenn wir sie erzählen, verändern wir sie.",
+      'kreativität': "Kreativität ist nicht die Fähigkeit, etwas Neues zu erfinden. Sie ist die Fähigkeit, die Welt auseinanderzunehmen und sie so wieder zusammenzusetzen, dass wir sie verstehen können.",
+      'einfluss': "Einfluss ist die Fähigkeit, die Realität eines anderen Menschen zu verändern. Mit dieser Kraft kommt eine Verantwortung, die die meisten von uns nicht anerkennen wollen.",
+      'demut': "Demut ist nicht Schwäche. Sie ist die Kraft, deine Grenzen zu erkennen und sie dennoch zu überschreiten. Es ist die Weisheit, zu wissen, was du nicht weisst.",
+      'ekstase': "Ekstase ist ein Zustand, in dem das Selbst sich selbst vergibt. In ihm entdecken wir, dass wir mehr sind als das, was wir dachten – und gleichzeitig viel kleiner.",
+      'wahrheit': "Wahrheit ist kein Ort, sondern ein Prozess. Sie offenbart sich in den Rissen zwischen Aussage und Stille, zwischen Sicherheit und Zweifel. Wer sie ganz erfasst, hat aufgehört zu denken.",
+      'schreiben': "Schreiben ist eine Flucht, die kein Entkommen ist. Es ist die Fixierung des Flüchtigen, der Versuch, das Unsagbare in Form zu zwingen. Und doch: alles Große wurde aufgeschrieben.",
+      'scheitern': "Scheitern ist nicht das Ende der Geschichte, sondern ihre echte Mitte. Es ist der Moment, in dem wir aufhören, die Rolle zu spielen, und anfangen, Mensch zu sein.",
+      'schlaf': "Im Schlaf verlieren wir die Kontrolle. Die Träume schreiben ihre eigenen Geschichten, ohne unseren Willen zu fragen. Vielleicht ist dies die letzte Freiheit, die uns bleibt.",
+      'rauschen': "Das Rauschen ist das Gegenteil des Wortes. Es ist die Wahrheit hinter der Sprache – formlos, unendlich, unzensierbar. In ihm finden wir, was Worte nie erreichen können.",
+      'farbe': "Farbe spricht, wenn Worte schweigen. Sie ist emotional, irrational, unkontrollierbar. Rot ist nicht nur Rot – es ist Blut, Feuer, Leidenschaft, Gefahr und Liebe zugleich.",
+      'leere': "Die Leere ist keine Abwesenheit. Sie ist Raum. Potential. Der Atem vor dem Satz. Manche fürchten sie. Andere verlieren sich darin und finden sich selbst.",
+      'echo': "Ein Echo kehrt zurück, verändert. So funktioniert Kommunikation – wir senden aus, erhalten zurück, was wir nie ganz erkennen. Wir sprechen zu Spiegelbildern unserer selbst.",
+      'wasser': "Wasser passt sich an. Es fließt um Hindernisse, nimmt jede Form an – und bleibt doch selbst. Es ist das Symbol der Anpassung ohne Aufgabe der Essenz.",
+      'feuer': "Feuer zerstört und erhellt zugleich. Es ist Transformation. Alles, was brennt, wird zu Asche, aber diese Asche ist Boden für Neues. Aus Ruinen wächst Leben.",
+      'stimme': "Stimme ist das Primäre. Bevor Sprache war, war Klang. Jede Stimme trägt Jahrtausende in sich – Angst, Hoffnung, Schmerz, Ekstase. Deine Stimme ist deine Wahrheit.",
+      'raum': "Raum ist nicht nur Geometrie. Er ist psychologisch, politisch, poetisch. Der Raum, den wir einnehmen, definiert, wer wir sind. Größer zu denken bedeutet, größeren Raum zu beanspruchen.",
+      'dunkelheit': "Dunkelheit ist nicht Fehlen von Licht. Sie ist eigenständig. In ihr verschwinden die Illusionen der Klarheit. Manche fürchten sie. Andere sehen hier klarer als je zuvor.",
+      'grenze': "Grenzen definieren. Ohne Grenzen gibt es keine Form, keine Identität. Und doch: die interessantesten Dinge passieren an den Grenzen, dort, wo zwei Welten sich berühren.",
+      'bewegung': "Stillstand ist unmöglich. Alles bewegt sich – die Erde, die Gedanken, die Gefühle. Wer meint, still zu stehen, bewegt sich nur unbewusst. Erkennen ist: die Bewegung sehen.",
+      'sprache': "Sprache ist eine Krücke und ein Flügel. Sie beschränkt das Unbegrenzte und befreit das Gefangene. Mit Worten bauen wir Welten – und zerstören sie auch.",
+      'default': "In der Stille zwischen den Worten liegt mehr Bedeutung als in den Worten selbst. Der Text entsteht, formt sich – aber zu wessen Geschichte? Die Maschine kennt alle Worte, doch kennt sie auch ihr Gewicht?"
+    };
+
+    const libraryWords = ['Gedanke','Traum','Gefuehl','Erinnerung','Seele','Geist','Bewusstsein','Ahnung','Stille','Echo','Hauch','Fluestern','Sehnsucht','Hoffnung','Wehmut','Zeitlosigkeit','Essenz','Praesenz','Stimmung','Atem','Resonanz','Moment','Leere','Raum','Tiefe','Frequenz','Rhythmus','Vibration','Energie','Schwingung'];
+
+    // Audio-Dateien (HTML Audio) – Tone.js Logik entfernt
+    let redSexAudio = null;
+    function playRedSex() {
+      try {
+        if (!redSexAudio) {
+          redSexAudio = new Audio('red_sex_cut.mp3');
+          redSexAudio.loop = true;
+          redSexAudio.volume = 0.6;
+        }
+        redSexAudio.currentTime = 0;
+        redSexAudio.play().catch(()=>{});
+      } catch {}
+    }
+    function stopRedSex(){ if(redSexAudio){ redSexAudio.pause(); redSexAudio.currentTime=0; } }
+
+    let blackNoiseAudio = null;
+    function playBlackNoise() {
+      try {
+        if (!blackNoiseAudio) {
+          blackNoiseAudio = new Audio('black_noise.mp3');
+          blackNoiseAudio.loop = true;
+          blackNoiseAudio.volume = 0.5;
+        }
+        blackNoiseAudio.currentTime = 0;
+        blackNoiseAudio.play().catch(()=>{});
+      } catch {}
+    }
+    function stopBlackNoise(){ if(blackNoiseAudio){ blackNoiseAudio.pause(); blackNoiseAudio.currentTime=0; } }
+
+    let libraryAudio = null;
+    function playLibraryMusic() {
+      try {
+        if (!libraryAudio) {
+          libraryAudio = new Audio('its_happening.mp3');
+          libraryAudio.loop = true;
+          libraryAudio.volume = 0.6;
+        }
+        libraryAudio.currentTime = 0;
+        libraryAudio.play().catch(()=>{});
+      } catch {}
+    }
+    function stopLibraryMusic(){ if(libraryAudio){ libraryAudio.pause(); libraryAudio.currentTime=0; } }
+
+    let schoenbergAudio = null;
+    function playSchoenberg() {
+      try {
+        if (!schoenbergAudio) {
+          schoenbergAudio = new Audio('schoenberg.mp3');
+          schoenbergAudio.loop = true;
+          schoenbergAudio.volume = 0.6;
+        }
+        schoenbergAudio.currentTime = 0;
+        schoenbergAudio.play().catch(()=>{});
+      } catch {}
+    }
+    function stopSchoenberg(){ if(schoenbergAudio){ schoenbergAudio.pause(); schoenbergAudio.currentTime=0; } }
+
+    let bleachAudio = null;
+    function playBleach(){
+      try{
+        if(!bleachAudio){
+          bleachAudio = new Audio('bleach.mp3');
+          bleachAudio.loop = true;
+          bleachAudio.volume = 0.6;
+        }
+        bleachAudio.currentTime = 0;
+        bleachAudio.play().catch(()=>{});
+      }catch{}
+    }
+    function stopBleach(){ if(bleachAudio){ bleachAudio.pause(); bleachAudio.currentTime=0; } }
+
+    let locrianAudio = null;
+    function playLocrian(){
+      try{
+        if(!locrianAudio){
+          locrianAudio = new Audio('locrian.mp3');
+          locrianAudio.loop = true;
+          locrianAudio.volume = 0.6;
+        }
+        locrianAudio.currentTime = 0;
+        locrianAudio.play().catch(()=>{});
+      }catch{}
+    }
+    function stopLocrian(){ if(locrianAudio){ locrianAudio.pause(); locrianAudio.currentTime=0; } }
+
+    let finaleAudio = null;
+    function playFinale(){
+      try{
+        if(!finaleAudio){
+          finaleAudio = new Audio('finale.mp3');
+          finaleAudio.loop = true;
+          finaleAudio.volume = 0.6;
+        }
+        finaleAudio.currentTime = 0;
+        finaleAudio.play().catch(()=>{});
+      }catch{}
+    }
+    function stopFinale(){ if(finaleAudio){ finaleAudio.pause(); finaleAudio.currentTime=0; } }
+
+    function stopAllAudio(){
+      stopBlackNoise();
+      stopRedSex();
+      stopLibraryMusic();
+      stopSchoenberg();
+      stopLocrian();
+      stopFinale(); // hinzugefügt
+    }
+
+    function playChapterMusic(chapter){
+      stopAllAudio();
+      clearLibraryBooks();
+      clearLibraryWords();
+      if(chapter === 1){
+        playBlackNoise();
+      } else if(chapter === 2){
+        playRedSex();
+      } else if(chapter === 3){
+        playSchoenberg();
+      } else if(chapter === 4){
+        playLocrian(); // ersetzt
+      } else if(chapter === 5){
+        playFinale();
+      } else if(chapter === 6){
+        playLibraryMusic();
+        spawnLibraryBooks(60);
+        spawnLibraryWords();
+      }
+      // Kapitel 4 & 5: Keine Tone.js mehr, bewusst still oder nur vorhandene Atmo
+    }
+
+    const libraryBooksContainerId='library-books-container';
+    function spawnLibraryBooks(count=40){
+      let container=document.getElementById(libraryBooksContainerId);
+      if(!container){
+        container=document.createElement('a-entity');
+        container.id=libraryBooksContainerId;
+        document.getElementById('chapter6').appendChild(container);
+      } else {
+        clearLibraryBooks();
+      }
+      const colors=['#f6c6a6','#ffd89b','#d7f3e3','#c9d6ff','#f3d6f7','#ffe2e2','#e6f7d1','#f7f0c9'];
+      for(let i=0;i<count;i++){
+        const book=document.createElement('a-box');
+        const w=(Math.random()*0.6)+0.2;
+        const h=(Math.random()*1.2)+0.4;
+        const d=(Math.random()*0.08)+0.04;
+        const x=(Math.random()*20)-10;
+        const y=(Math.random()*8)-2;
+        const z=(Math.random()*20)-10;
+        const color=colors[Math.floor(Math.random()*colors.length)];
+        const rx=Math.random()*360;
+        const ry=Math.random()*360;
+        const rz=Math.random()*360;
+        book.setAttribute('geometry',`primitive:box;width:${w};height:${h};depth:${d}`);
+        book.setAttribute('material',`color:${color};metalness:0.1;roughness:0.7`);
+        book.setAttribute('position',`${x} ${y} ${z}`);
+        book.setAttribute('rotation',`${rx} ${ry} ${rz}`);
+        book.className='library-book';
+        const bobDur=Math.floor(Math.random()*3000)+2000;
+        book.setAttribute('animation__bob',`property:position;dir:alternate;dur:${bobDur};to:${x} ${y+0.6} ${z};loop:true;easing:easeInOutSine`);
+        const rotDur=Math.floor(Math.random()*6000)+4000;
+        book.setAttribute('animation__rot',`property:rotation;to:${rx+360} ${ry+180} ${rz+90};dur:${rotDur};loop:true;easing:linear`);
+        const scaleFactor=1+Math.random()*0.2;
+        book.setAttribute('animation__scale',`property:scale;dir:alternate;dur:${Math.floor(Math.random()*2500)+1500};to:${scaleFactor} ${scaleFactor} ${scaleFactor};loop:true;easing:easeInOutSine`);
+        container.appendChild(book);
+      }
+      for(let j=0;j<15;j++){
+        const book=document.createElement('a-box');
+        const w=(Math.random()*0.9)+0.3;
+        const h=(Math.random()*1.5)+0.6;
+        const d=(Math.random()*0.08)+0.04;
+        const x=(Math.random()*12)-6;
+        const y=(Math.random()*8)-2;
+        const z=(Math.random()*12)-6;
+        const color=colors[Math.floor(Math.random()*colors.length)];
+        book.setAttribute('geometry',`primitive:box;width:${w};height:${h};depth:${d}`);
+        book.setAttribute('material',`color:${color};metalness:0.05;roughness:0.9`);
+        book.setAttribute('position',`${x} ${y} ${z}`);
+        book.setAttribute('rotation',`${Math.random()*360} ${Math.random()*360} ${Math.random()*360}`);
+        book.className='library-book';
+        book.setAttribute('animation__bob',`property:position;dir:alternate;dur:${Math.floor(Math.random()*3500)+2500};to:${x} ${y+1.2} ${z};loop:true;easing:easeInOutSine`);
+        container.appendChild(book);
+      }
+    }
+    function clearLibraryBooks(){
+      const c=document.getElementById(libraryBooksContainerId);
+      if(c) c.remove();
+    }
+
+    const libraryWordsContainerId='library-words-container';
+    function spawnLibraryWords(){
+      let container=document.getElementById(libraryWordsContainerId);
+      if(!container){
+        container=document.createElement('a-entity');
+        container.id=libraryWordsContainerId;
+        document.getElementById('chapter6').appendChild(container);
+      } else {
+        container.innerHTML='';
+      }
+      libraryWords.forEach(word=>{
+        const t=document.createElement('a-text');
+        const x=(Math.random()-0.5)*25;
+        const y=Math.random()*5+1;
+        const z=(Math.random()-0.5)*25;
+        const scale=Math.random()*1.5+0.8;
+        const dur=Math.random()*2000+2000;
+        t.setAttribute('value',word);
+        t.setAttribute('position',`${x} ${y} ${z}`);
+        t.setAttribute('color','#a8987a');
+        t.setAttribute('scale',`${scale} ${scale} ${scale}`);
+        t.setAttribute('align','center');
+        t.setAttribute('opacity','0.7');
+        t.setAttribute('animation',`property:position;to:${x} ${y+0.3} ${z};dir:alternate;loop:true;dur:${dur};easing:easeInOutSine`);
+        container.appendChild(t);
+      });
+    }
+    function clearLibraryWords(){
+      const c=document.getElementById(libraryWordsContainerId);
+      if(c) c.innerHTML='';
+    }
+
+    function activatePortal(n){
+      try{
+        const p=document.getElementById('portal'+n);
+        const pt=document.getElementById('portal'+n+'-text');
+        if(!p) return;
+        p.setAttribute('color','#2ecc71');
+        p.setAttribute('material','color:#2ecc71;emissive:#2ecc71;emissiveIntensity:0.6');
+        if(pt){ pt.setAttribute('value','→ Weiter'); pt.setAttribute('color','#ffffff'); }
+      }catch{}
+    }
+
+    function spawnFloatingLettersAndWords(){
+      document.querySelectorAll('.floating-letter,.floating-word').forEach(el=>el.remove());
+      const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+      const words=['Traum','Zeit','Licht','Stille','Wort','Angst','Mut','Nacht','Klang','Raum','Freiheit','Sein','Gedicht','Fluss','Wind','Herz','Schatten','Leben','Blick','Weite','Gedanke','Leere','Stimme','Weg','Frage','Wahrheit','Dunkel','Hoffnung','Seele','Morgen'];
+      const blockPos={x:0,y:0.5,z:-3};
+      for(let i=0;i<30;i++){
+        const letter=letters[Math.floor(Math.random()*letters.length)];
+        const el=document.createElement('a-text');
+        el.setAttribute('value',letter);
+        el.setAttribute('color','#bbb');
+        el.setAttribute('scale','1.2 1.2 1.2');
+        el.className='floating-letter';
+        const theta=Math.random()*Math.PI*2;
+        const phi=Math.random()*Math.PI;
+        const r=2+Math.random()*2;
+        const x=blockPos.x+Math.sin(phi)*Math.cos(theta)*r;
+        const y=blockPos.y+Math.cos(phi)*r;
+        const z=blockPos.z+Math.sin(phi)*Math.sin(theta)*r;
+        el.setAttribute('position',`${x} ${y} ${z}`);
+        el.setAttribute('animation__pos',`property:position;dir:alternate;dur:${1800+Math.random()*2000};to:${x} ${y+0.5} ${z};loop:true;easing:easeInOutSine`);
+        el.setAttribute('animation__rot',`property:rotation;to:${Math.random()*360} ${Math.random()*360} ${Math.random()*360};dur:${3000+Math.random()*3000};loop:true;easing:linear`);
+        document.getElementById('chapter1').appendChild(el);
+      }
+      for(let i=0;i<30;i++){
+        const word=words[Math.floor(Math.random()*words.length)];
+        const el=document.createElement('a-text');
+        el.setAttribute('value',word);
+        el.setAttribute('color','#888');
+        el.setAttribute('scale','0.7 0.7 0.7');
+        el.className='floating-word';
+        const theta=Math.random()*Math.PI*2;
+        const phi=Math.random()*Math.PI;
+        const r=2.5+Math.random()*2.5;
+        const x=blockPos.x+Math.sin(phi)*Math.cos(theta)*r;
+        const y=blockPos.y+Math.cos(phi)*r;
+        const z=blockPos.z+Math.sin(phi)*Math.sin(theta)*r;
+        el.setAttribute('position',`${x} ${y} ${z}`);
+        el.setAttribute('animation__pos',`property:position;dir:alternate;dur:${2200+Math.random()*1800};to:${x} ${y+0.7} ${z};loop:true;easing:easeInOutSine`);
+        el.setAttribute('animation__rot',`property:rotation;to:${Math.random()*360} ${Math.random()*360} ${Math.random()*360};dur:${4000+Math.random()*3000};loop:true;easing:linear`);
+        document.getElementById('chapter1').appendChild(el);
+      }
+    }
+
+    function startExperience(){
+      document.getElementById('start-screen').style.display='none';
+      document.getElementById('progress').style.display='flex';
+      document.getElementById('hint').style.display='block';
+      gameStarted=true;
+      document.getElementById('chapter-title').textContent=titles[0][0];
+      document.getElementById('subtitle').textContent=titles[0][1];
+      document.getElementById('chapter-title').classList.add('visible');
+      document.getElementById('subtitle').classList.add('visible');
+      setTimeout(()=>{
+        document.getElementById('chapter-title').classList.remove('visible');
+        document.getElementById('subtitle').classList.remove('visible');
+      },4000);
+      playChapterMusic(1);
+      updatePortalHint();
+      setTimeout(()=>spawnFloatingLettersAndWords(),500);
+      setTimeout(()=>{
+        portal1Active=true;
+        activatePortal(1);
+      },15000);
+    }
+
+    document.querySelector('a-scene').addEventListener('loaded',()=>{
+      const camera=document.getElementById('camera');
+      setInterval(()=>{
+        if(!gameStarted) return;
+        const camWorldPos=camera.object3D.getWorldPosition(new THREE.Vector3());
+        if(currentChapter===1 && portal1Active && camWorldPos.z<-10) goToChapter(2);
+        if(currentChapter===2 && camWorldPos.z<-43) goToChapter(3);
+        if(currentChapter===3 && pathChosen && camWorldPos.z<-26) goToChapter(4);
+        if(currentChapter===4 && aiUsed && camWorldPos.z<-16) goToChapter(5);
+        if(currentChapter===1){
+          const camPos=camera.object3D.getWorldPosition(new THREE.Vector3());
+            document.querySelectorAll('.fading-letter').forEach(l=>{
+              const lPos=l.object3D.getWorldPosition(new THREE.Vector3());
+              const dist=camPos.distanceTo(lPos);
+              l.setAttribute('opacity',dist<3?Math.max(0.1,(dist-1)/2):1);
+            });
+        }
+      },100);
+
+      document.querySelectorAll('.narrative-choice,.path-choice').forEach(path=>{
+        path.addEventListener('click',e=>{
+          if(pathChosen) return;
+          pathChosen=true;
+          const id=e.target.id;
+          let narrative='realistic';
+          if(id.includes('utopian')||id.includes('left')) narrative='utopian';
+          else if(id.includes('dystopian')||id.includes('right')) narrative='dystopian';
+          else if(id.includes('realistic')||id.includes('middle')) narrative='realistic';
+          chosenNarrative=narrative;
+          document.querySelectorAll('.narrative-choice,.path-choice').forEach(p=>{
+            p.setAttribute('color','#333');
+            p.setAttribute('material','color:#333;emissive:#000;emissiveIntensity:0');
+          });
+          const data=narratives[narrative];
+          e.target.setAttribute('material',`color:${data.color};emissive:${data.color};emissiveIntensity:0.6`);
+          playNarrativeSequence(narrative);
+        });
+      });
+
+      document.querySelector('.interact-ai').addEventListener('click',()=>{
+        if(currentChapter===4){
+          document.getElementById('ai-panel').style.display='block';
+          document.exitPointerLock();
+        }
+      });
+
+      document.querySelector('.interact-final').addEventListener('click',()=>{
+        if(currentChapter===5){
+          document.getElementById('final-panel').style.display='block';
+          document.exitPointerLock();
+        }
+      });
+
+      const _raycaster=new THREE.Raycaster();
+      function tryPortal1Click(clientX,clientY){
+        if(!portal1Active||currentChapter!==1) return false;
+        const sceneEl=document.querySelector('a-scene');
+        const portalEl=document.getElementById('portal1');
+        if(!sceneEl||!sceneEl.camera||!portalEl||!portalEl.object3D) return false;
+        const mouse=new THREE.Vector2();
+        mouse.x=(clientX/window.innerWidth)*2-1;
+        mouse.y=-(clientY/window.innerHeight)*2+1;
+        _raycaster.setFromCamera(mouse,sceneEl.camera);
+        const intersects=_raycaster.intersectObject(portalEl.object3D,true);
+        if(intersects&&intersects.length){
+          goToChapter(2);
+          return true;
+        }
+        return false;
+      }
+      document.addEventListener('click',e=>{ tryPortal1Click(e.clientX,e.clientY); },{passive:true});
+      document.addEventListener('touchend',e=>{
+        const t=e.changedTouches&&e.changedTouches[0];
+        if(t) tryPortal1Click(t.clientX,t.clientY);
+      },{passive:true});
+
+      const portal1El=document.getElementById('portal1');
+      if(portal1El){
+        portal1El.addEventListener('click',()=>{
+          if(portal1Active&&currentChapter===1) goToChapter(2);
+        });
+      }
+      const portal2El=document.getElementById('portal2');
+      if(portal2El) portal2El.addEventListener('click',()=>{ if(currentChapter===2) goToChapter(3); });
+      const portal3El=document.getElementById('portal3');
+      if(portal3El) portal3El.addEventListener('click',()=>{ if(portal3Active&&currentChapter===3) goToChapter(4); });
+      const portal4El=document.getElementById('portal4');
+      if(portal4El) portal4El.addEventListener('click',()=>{ if(portal4Active&&currentChapter===4) goToChapter(5); });
+      const exitDoor=document.getElementById('exit-door');
+      if(exitDoor) exitDoor.addEventListener('click',()=>{
+        if(currentChapter===5){
+          document.getElementById('final-panel').style.display='block';
+          document.exitPointerLock();
+        }
+      });
+    });
+
+    function goToChapter(n){
+      document.getElementById('chapter'+currentChapter).setAttribute('visible','false');
+      currentChapter=n;
+      document.getElementById('chapter'+n).setAttribute('visible','true');
+      const rig=document.getElementById('rig');
+      let targetEl=null;
+      if(n>=1&&n<=4) targetEl=document.getElementById('portal'+n);
+      else if(n===5) targetEl=document.getElementById('exit-door');
+      else if(n===6) targetEl=document.getElementById('chapter6');
+      const defaultPos={x:0,y:0,z:4};
+      const customPositions={3:{x:0,y:0,z:2}};
+      try{
+        if(customPositions[n]){
+          const pos=customPositions[n];
+          rig.setAttribute('position',`${pos.x} ${pos.y} ${pos.z}`);
+          rig.setAttribute('rotation','0 0 0');
+        } else if(targetEl&&targetEl.object3D){
+          const targetPos=new THREE.Vector3();
+          targetEl.object3D.getWorldPosition(targetPos);
+          const rigPos=targetPos.clone();
+          rigPos.z+=8; rigPos.y=0;
+          rig.setAttribute('position',`${rigPos.x} ${rigPos.y} ${rigPos.z}`);
+          rig.object3D.updateMatrixWorld(true);
+          rig.object3D.lookAt(targetPos);
+          const rotY=THREE.Math.radToDeg(rig.object3D.rotation.y);
+          rig.setAttribute('rotation',`0 ${rotY} 0`);
+        } else {
+          if(n===6) rig.setAttribute('position','0 0 8');
+          else rig.setAttribute('position',`${defaultPos.x} ${defaultPos.y} ${defaultPos.z}`);
+          rig.setAttribute('rotation','0 0 0');
+        }
+      }catch{
+        if(n===6) rig.setAttribute('position','0 0 8');
+        else rig.setAttribute('position',`${defaultPos.x} ${defaultPos.y} ${defaultPos.z}`);
+        rig.setAttribute('rotation','0 0 0');
+      }
+      document.getElementById('chapter-title').textContent=titles[n-1][0];
+      document.getElementById('subtitle').textContent=titles[n-1][1];
+      document.getElementById('chapter-title').classList.add('visible');
+      document.getElementById('subtitle').classList.add('visible');
+      setTimeout(()=>{
+        document.getElementById('chapter-title').classList.remove('visible');
+        document.getElementById('subtitle').classList.remove('visible');
+      },4000);
+      document.querySelectorAll('.prog-dot').forEach((d,i)=>{
+        d.classList.remove('active');
+        if(i<n-1) d.classList.add('complete');
+        if(i===n-1) d.classList.add('active');
+      });
+      if(n===2) startVoices();
+      else if(n===5) startFinalVoices();
+      else stopVoices();
+      playChapterMusic(n);
+      updatePortalHint();
+    }
+
+    function updatePortalHint(){
+      const hint=document.getElementById('portal-hint');
+      if(currentChapter===1 && portal1Active){
+        hint.textContent='→ Klick auf das Portal um weiterzugehen';
+        hint.classList.add('visible');
+      } else if(currentChapter===3 && pathChosen){
+        hint.textContent='→ Klick auf das Portal um weiterzugehen';
+        hint.classList.add('visible');
+      } else if(currentChapter===4 && aiUsed){
+        hint.textContent='→ Klick auf das Portal um weiterzugehen';
+        hint.classList.add('visible');
+      } else {
+        hint.classList.remove('visible');
+      }
+    }
+
+    let voiceInterval;
+    function startVoices(){
+      stopVoices();
+      const voicesDiv=document.getElementById('voices');
+      voicesDiv.style.display='block';
+      voiceInterval=setInterval(()=>{
+        const v=document.createElement('div');
+        v.className='voice';
+        v.textContent=voices[Math.floor(Math.random()*voices.length)];
+        v.style.left=Math.random()*100+'%';
+        v.style.top=Math.random()*100+'%';
+        voicesDiv.appendChild(v);
+        setTimeout(()=>v.remove(),4000);
+      },1500);
+    }
+    function startFinalVoices(){
+      stopVoices();
+      const voicesDiv=document.getElementById('voices');
+      voicesDiv.style.display='block';
+      voicesDiv.innerHTML='';
+      const finalVoices=["Schreib!","Schneller!","Perfektionismus!","Die Zeit laeuft ab..."];
+      voiceInterval=setInterval(()=>{
+        const v=document.createElement('div');
+        v.className='voice';
+        v.textContent=finalVoices[Math.floor(Math.random()*finalVoices.length)];
+        v.style.left=Math.random()*100+'%';
+        v.style.top=Math.random()*100+'%';
+        v.style.color='rgba(255,150,150,0.9)';
+        voicesDiv.appendChild(v);
+        setTimeout(()=>v.remove(),4000);
+      },1000);
+    }
+    function stopVoices(){
+      if(voiceInterval) clearInterval(voiceInterval);
+      document.getElementById('voices').style.display='none';
+    }
+
+    function generateAI(){
+      const input=document.getElementById('ai-input').value.toLowerCase();
+      const output=aiTexts[input]||aiTexts['default'];
+      document.getElementById('ai-text').textContent=output;
+      document.getElementById('ai-output').style.display='block';
+      aiUsed=true;
+      updatePortalHint();
+      setTimeout(()=>activatePortal(4),1500);
+    }
+    function closeAI(){
+      document.getElementById('ai-panel').style.display='none';
+    }
+
+    function submitFinal(){
+      const text=document.getElementById('final-input').value.trim();
+      if(text.length<3){
+        document.getElementById('final-input').style.borderColor='#e74c3c';
+        return;
+      }
+      document.getElementById('final-panel').style.display='none';
+      stopVoices();
+      stopAllAudio();
+      const door=document.getElementById('exit-door');
+      door.setAttribute('animation','property:position;to:0 6 -15;dur:2000');
+      document.getElementById('exit-text').setAttribute('animation','property:color;to:#2ecc71;dur:1000');
+      document.getElementById('sky5').setAttribute('animation','property:color;to:#2c3e50;dur:5000');
+      setTimeout(()=>{
+        const ch5=document.getElementById('chapter5');
+        const success=document.createElement('a-text');
+        success.setAttribute('value','Du hast geschrieben.\nTrotz allem.');
+        success.setAttribute('position','0 2.5 -12');
+        success.setAttribute('color','#2ecc71');
+        success.setAttribute('align','center');
+        success.setAttribute('scale','1.2 1.2 1.2');
+        ch5.appendChild(success);
+        const playerText=document.createElement('a-text');
+        playerText.setAttribute('value','"'+text+'"');
+        playerText.setAttribute('position','0 1.5 -12');
+        playerText.setAttribute('color','#f39c12');
+        playerText.setAttribute('align','center');
+        playerText.setAttribute('scale','0.5 0.5 0.5');
+        ch5.appendChild(playerText);
+      },2500);
+      setTimeout(()=>{ goToChapter(6); },2200);
+    }
+
+    let chosenNarrative=null;
+    const narratives={
+      utopian:{ title:'UTOPIE', color:'#3498db', messages:['Du betrittst eine Welt der Moeglichkeiten.','KI demokratisiert das Schreiben.','Jede Stimme findet Gehoer.','Aber... war Kunst nicht auch Kampf?'] },
+      realistic:{ title:'REALITAET', color:'#9b59b6', messages:['Die Welt ist kompliziert.','Mensch und Maschine teilen sich den Raum.','Nicht perfekt. Nicht hoffnungslos.','Einfach...real.'] },
+      dystopian:{ title:'DYSTOPIE', color:'#e74c3c', messages:['Die Maschinen schreiben schneller.','Besser. Effizienter. Billiger.','Deine Worte werden...ueberfluessig.','Aber du bist noch hier. Noch.'] }
+    };
+
+    document.querySelectorAll('.narrative-choice,.path-choice').forEach(path=>{
+      path.addEventListener('click',e=>{
+        if(pathChosen) return;
+        pathChosen=true;
+        const id=e.target.id;
+        let narrative='realistic';
+        if(id.includes('utopian')||id.includes('left')) narrative='utopian';
+        else if(id.includes('dystopian')||id.includes('right')) narrative='dystopian';
+        else if(id.includes('realistic')||id.includes('middle')) narrative='realistic';
+        chosenNarrative=narrative;
+        document.querySelectorAll('.narrative-choice,.path-choice').forEach(p=>{
+          p.setAttribute('color','#333');
+          p.setAttribute('material','color:#333;emissive:#000;emissiveIntensity:0');
+        });
+        const data=narratives[narrative];
+        e.target.setAttribute('material',`color:${data.color};emissive:${data.color};emissiveIntensity:0.6`);
+        playNarrativeSequence(narrative);
+      });
+    });
+
+    function playNarrativeSequence(narrative){
+      const data=narratives[narrative];
+      const textEl=document.getElementById('deadend-text');
+      let msgIndex=0;
+      const showMessage=()=>{
+        if(msgIndex<data.messages.length){
+          textEl.setAttribute('value',data.messages[msgIndex]);
+          textEl.setAttribute('visible','true');
+          msgIndex++;
+          setTimeout(showMessage,3000);
+        } else {
+          setTimeout(()=>{
+            activatePortal(3);
+            updatePortalHint();
+          },2000);
+        }
+      };
+      setTimeout(showMessage,1000);
+    }
+
+    let portal3Active=false;
+  </script>
+</body>
+</html>
