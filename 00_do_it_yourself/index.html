@@ -713,25 +713,14 @@
     document.addEventListener('DOMContentLoaded', function() {
       const scene = document.querySelector('a-scene');
       
-      // Nutze 'loaded' UND stelle sicher, dass die Rig existiert
-      if(scene.hasLoaded) {
-        initializeGame();
-      } else {
-        scene.addEventListener('loaded', initializeGame);
-      }
+      // Warte auf den 'loaded' Event von A-Frame
+      scene.addEventListener('loaded', function() {
+        // Extra Verzögerung für vollständige Initialisierung
+        setTimeout(() => {
+          startGame();
+        }, 1000);
+      });
     });
-
-    function initializeGame() {
-      // Warte, bis die Kamera wirklich existiert
-      const camera = document.getElementById('camera');
-      if(!camera) {
-        setTimeout(initializeGame, 100);
-        return;
-      }
-      
-      // Jetzt starte das Spiel
-      startGame();
-    }
 
     function startGame() {
       gameStarted = true;
@@ -761,9 +750,7 @@
       }, 4000);
       
       // Spawn floating letters
-      setTimeout(() => {
-        spawnFloatingLettersAndWords();
-      }, 500);
+      spawnFloatingLettersAndWords();
       
       // Aktiviere Portal nach 15s
       setTimeout(() => {
