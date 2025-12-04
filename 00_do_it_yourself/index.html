@@ -317,67 +317,62 @@
   </a-scene>
 
   <script>
-    // Warte auf A-Frame, DANN registriere Components
-    document.addEventListener('DOMContentLoaded', function() {
+    // Controller-Component registrieren
+    AFRAME.registerComponent('controller-movement', {
+      schema: {
+        speed: { type: 'number', default: 10 },
+        easing: { type: 'boolean', default: true }
+      },
       
-      // JETZT ERST Controller-Component registrieren
-      AFRAME.registerComponent('controller-movement', {
-        schema: {
-          speed: { type: 'number', default: 10 },
-          easing: { type: 'boolean', default: true }
-        },
-        
-        init: function() {
-          this.velocity = { x: 0, y: 0, z: 0 };
-          this.rigEl = document.getElementById('rig');
-          this.moveDirection = new THREE.Vector3();
-        },
+      init: function() {
+        this.velocity = { x: 0, y: 0, z: 0 };
+        this.rigEl = document.getElementById('rig');
+        this.moveDirection = new THREE.Vector3();
+      },
 
-        tick: function() {
-          const controller = this.el.object3D;
-          const controllerWorldPos = new THREE.Vector3();
-          controller.getWorldPosition(controllerWorldPos);
+      tick: function() {
+        const controller = this.el.object3D;
+        const controllerWorldPos = new THREE.Vector3();
+        controller.getWorldPosition(controllerWorldPos);
+        
+        const gamepads = navigator.getGamepads?.() || [];
+        let inputX = 0, inputZ = 0;
+        
+        for(const gp of gamepads) {
+          if(!gp || gp.mapping !== 'xr-standard') continue;
           
-          const gamepads = navigator.getGamepads?.() || [];
-          let inputX = 0, inputZ = 0;
-          
-          for(const gp of gamepads) {
-            if(!gp || gp.mapping !== 'xr-standard') continue;
-            
-            if(this.el.id === 'left-controller') {
-              inputX = gp.axes[2] || 0;
-              inputZ = gp.axes[3] || 0;
-            }
-          }
-          
-          if(Math.abs(inputX) < 0.1) inputX = 0;
-          if(Math.abs(inputZ) < 0.1) inputZ = 0;
-          
-          if(inputX !== 0 || inputZ !== 0) {
-            const camera = document.getElementById('camera').object3D;
-            const cameraDir = new THREE.Vector3(0, 0, -1);
-            cameraDir.applyQuaternion(camera.quaternion);
-            cameraDir.y = 0;
-            cameraDir.normalize();
-            
-            const rightDir = new THREE.Vector3(1, 0, 0);
-            rightDir.applyQuaternion(camera.quaternion);
-            rightDir.y = 0;
-            rightDir.normalize();
-            
-            this.moveDirection
-              .copy(cameraDir)
-              .multiplyScalar(inputZ)
-              .addScaledVector(rightDir, inputX);
-            
-            const rigPos = this.rigEl.object3D.position;
-            const moveAmount = this.data.speed * (1 / 60);
-            rigPos.addScaledVector(this.moveDirection, moveAmount);
+          if(this.el.id === 'left-controller') {
+            inputX = gp.axes[2] || 0;
+            inputZ = gp.axes[3] || 0;
           }
         }
-      });
-
-    }); // Ende DOMContentLoaded
+        
+        if(Math.abs(inputX) < 0.1) inputX = 0;
+        if(Math.abs(inputZ) < 0.1) inputZ = 0;
+        
+        if(inputX !== 0 || inputZ !== 0) {
+          const camera = document.getElementById('camera').object3D;
+          const cameraDir = new THREE.Vector3(0, 0, -1);
+          cameraDir.applyQuaternion(camera.quaternion);
+          cameraDir.y = 0;
+          cameraDir.normalize();
+          
+          const rightDir = new THREE.Vector3(1, 0, 0);
+          rightDir.applyQuaternion(camera.quaternion);
+          rightDir.y = 0;
+          rightDir.normalize();
+          
+          this.moveDirection
+            .copy(cameraDir)
+            .multiplyScalar(inputZ)
+            .addScaledVector(rightDir, inputX);
+          
+          const rigPos = this.rigEl.object3D.position;
+          const moveAmount = this.data.speed * (1 / 60);
+          rigPos.addScaledVector(this.moveDirection, moveAmount);
+        }
+      }
+    });
 
     let currentChapter = 1;
     let portal1Active = false;
