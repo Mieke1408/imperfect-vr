@@ -712,11 +712,13 @@
     }
 
     // Auto-Start beim Laden - SOFORT starten, ohne auf alles zu warten
-    window.addEventListener('load', function() {
+    document.querySelector('a-scene').addEventListener('loaded', function() {
+      console.log('A-Frame geladen!');
       startGame();
     });
 
     function startGame() {
+      console.log('Game startet...');
       gameStarted = true;
       currentChapter = 1;
       
@@ -748,7 +750,7 @@
       setTimeout(() => {
         portal1Active = true;
         activatePortal(1);
-      }, 15000);
+      }, 5000); // ← nur 5 Sekunden
     }
 
     // Lazy-Load für andere Kapitel
@@ -858,6 +860,19 @@
       // Exit -> Kapitel 6
       if(target.id === 'exit-door') {
         loadChapter(6);
+      }
+    });
+
+    // VR-Controller-Events
+    document.querySelector('a-scene').addEventListener('loaded', function() {
+      const rightController = document.getElementById('right-controller');
+      if(rightController) {
+        rightController.addEventListener('triggerdown', function(evt) {
+          const intersection = evt.target.components.raycaster.intersectedEls[0];
+          if(intersection) {
+            intersection.click();
+          }
+        });
       }
     });
 
