@@ -188,12 +188,19 @@
       <a-box position="-6 1.5 -15" width="0.2" height="3" depth="30" color="#f5f5dc" material="opacity:0.8"></a-box>
       <a-box position="6 1.5 -15" width="0.2" height="3" depth="30" color="#f5f5dc" material="opacity:0.8"></a-box>
       <a-text value="Waehle deinen Anfang" position="0 3 -6" color="#9b59b6" align="center" scale="0.8 0.8 0.8"></a-text>
+      
+      <!-- Linker Block mit klickbarem Text -->
       <a-box id="path-left" position="-3 0.6 -10" width="2.5" height="1.2" depth="2.5" color="#3498db" class="path-choice"></a-box>
-      <a-text value="'Es war einmal...'" position="-3 1.5 -10" color="#fff" align="center" scale="0.4 0.4 0.4"></a-text>
+      <a-text value="'Es war einmal...'" position="-3 1.5 -10" color="#fff" align="center" scale="0.4 0.4 0.4" class="path-choice" data-path="path-left"></a-text>
+      
+      <!-- Mittlerer Block mit klickbarem Text -->
       <a-box id="path-middle" position="0 0.6 -10" width="2.5" height="1.2" depth="2.5" color="#9b59b6" class="path-choice"></a-box>
-      <a-text value="'Ich erinnere mich...'" position="0 1.5 -10" color="#fff" align="center" scale="0.4 0.4 0.4"></a-text>
+      <a-text value="'Ich erinnere mich...'" position="0 1.5 -10" color="#fff" align="center" scale="0.4 0.4 0.4" class="path-choice" data-path="path-middle"></a-text>
+      
+      <!-- Rechter Block mit klickbarem Text -->
       <a-box id="path-right" position="3 0.6 -10" width="2.5" height="1.2" depth="2.5" color="#e67e22" class="path-choice"></a-box>
-      <a-text value="'Niemand wusste...'" position="3 1.5 -10" color="#fff" align="center" scale="0.4 0.4 0.4"></a-text>
+      <a-text value="'Niemand wusste...'" position="3 1.5 -10" color="#fff" align="center" scale="0.4 0.4 0.4" class="path-choice" data-path="path-right"></a-text>
+      
       <a-text id="deadend-text" value="" position="0 2.5 -18" color="#e74c3c" align="center" visible="false" scale="0.7 0.7 0.7"></a-text>
       <a-box id="portal3" class="portal" position="0 1.5 -25" width="3" height="3" depth="0.5" color="#333"></a-box>
       <a-text id="portal3-text" value="Waehle zuerst..." position="0 1.5 -24.7" color="#666" align="center" scale="0.6 0.6 0.6"></a-text>
@@ -712,7 +719,7 @@
         const y=(Math.random()*8)-2;
         const z=(Math.random()*12)-6;
         const color=colors[Math.floor(Math.random()*colors.length)];
-                                                                                     book.setAttribute('geometry',`primitive:box;width:${w};height:${h};depth:${d}`);
+                                                                                                                                                     book.setAttribute('geometry',`primitive:box;width:${w};height:${h};depth:${d}`);
                book.setAttribute('material',`color:${color};metalness:0.05;roughness:0.9`);
         book.setAttribute('position',`${x} ${y} ${z}`);
         book.setAttribute('rotation',`${Math.random()*360} ${Math.random()*360} ${Math.random()*360}`);
@@ -977,30 +984,41 @@
       // Path Choices - MIT KAPITEL-CHECK
       document.querySelectorAll('.path-choice').forEach(el => {
         el.addEventListener('click', function() {
-          if(currentChapter !== 3) return; // NEU
-          console.log('Path gewählt:', el.id);
+          if(currentChapter !== 3) return;
+          
+          // Ermittle welcher Path gewählt wurde (Box oder Text)
+          let pathId = el.id;
+          if (!pathId || !pathId.startsWith('path-')) {
+            // Klick war auf Text, hole data-path Attribut
+            pathId = el.getAttribute('data-path') || el.id;
+          }
+          
+          console.log('Path gewählt:', pathId);
           pathChosen = true;
           
-          // Entferne vorherige Highlight
+          // Entferne vorherige Highlights
           document.querySelectorAll('.path-choice').forEach(box => {
-            box.setAttribute('color', box.id === 'path-left' ? '#3498db' : 
-                                     box.id === 'path-middle' ? '#9b59b6' : '#e67e22');
-            box.setAttribute('material', 'opacity:0.8');
+            if (box.id === 'path-left') box.setAttribute('color', '#3498db');
+            else if (box.id === 'path-middle') box.setAttribute('color', '#9b59b6');
+            else if (box.id === 'path-right') box.setAttribute('color', '#e67e22');
           });
           
-          // Highlight aktuelle Box
-          el.setAttribute('color', '#2ecc71');
-          el.setAttribute('material', 'color:#2ecc71;emissive:#2ecc71;emissiveIntensity:0.8;opacity:1');
+          // Highlight die gewählte Box
+          const targetBox = document.getElementById(pathId);
+          if (targetBox) {
+            targetBox.setAttribute('color', '#2ecc71');
+            targetBox.setAttribute('material', 'color:#2ecc71;emissive:#2ecc71;emissiveIntensity:0.8;opacity:1');
+          }
           
-          // Zeige Bestätigung – nur eine Perspektive pro Block
+          // Zeige Bestätigung
           const deadend = document.getElementById('deadend-text');
           if(deadend) {
             deadend.setAttribute('visible', 'true');
             
             let chosenText = '';
-            if(el.id === 'path-left') {
+            if(pathId === 'path-left') {
               chosenText = "UTOPISCH:\nDie Technologie befreit den menschlichen Geist.\nKreativitaet wird unbegrenzt und demokratisiert.\nJeder kann sein volles Potenzial entfalten.";
-            } else if(el.id === 'path-middle') {
+            } else if(pathId === 'path-middle') {
               chosenText = "NEUTRAL:\nMensch und Maschine arbeiten zusammen.\nJeder nutzt seine eigenen Staerken optimal.\nDas Ergebnis ist besser als allein.";
             } else {
               chosenText = "DYSTOPISCH:\nWir verlieren uns selbst in unseren Erfindungen.\nIndividualitaet wird zur Datenspur.\nAuthentizitaet stirbt im Algorithmus.";
@@ -1065,7 +1083,9 @@
         document.getElementById('subtitle').classList.remove('visible');
       }, 4000);
       
-      playChapterMusic(1);
+      // Sound sofort starten
+      playBlackNoise();
+      
       updatePortalHint();
       
       setTimeout(() => spawnFloatingLettersAndWords(), 500);
@@ -1078,6 +1098,22 @@
         console.log('Portal 1 aktiviert nach 15s!');
       }, 15000);
     }
+
+    // Sound bei erster Benutzerinteraktion starten (Browser-Autoplay-Policy)
+    function startAudioOnInteraction() {
+      if (gameStarted && currentChapter === 1) {
+        playBlackNoise();
+      }
+      // Listener entfernen nach erster Interaktion
+      document.removeEventListener('click', startAudioOnInteraction);
+      document.removeEventListener('touchstart', startAudioOnInteraction);
+      document.removeEventListener('keydown', startAudioOnInteraction);
+    }
+    
+    // Listener für erste Benutzerinteraktion
+    document.addEventListener('click', startAudioOnInteraction);
+    document.addEventListener('touchstart', startAudioOnInteraction);
+    document.addEventListener('keydown', startAudioOnInteraction);
 
     if(sceneEl.hasLoaded) {
       initGame();
